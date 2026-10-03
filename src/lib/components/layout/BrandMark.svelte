@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * BrandMark — the kommit logotype.
+	 * BrandMark — the kommitly logotype.
 	 *
 	 * A chamfered teal tile holding a lowercase "k", followed by the
 	 * wordmark. Used in the header and the footer; it is a component rather
@@ -17,7 +17,7 @@
 		size?: 'sm' | 'md';
 
 		/**
-		 * Whether to show the "kommit" wordmark next to the tile. Set to
+		 * Whether to show the "kommitly" wordmark next to the tile. Set to
 		 * `false` for a very narrow container, where the tile alone still
 		 * identifies the app.
 		 */
@@ -31,7 +31,7 @@
 	<!--
 		`aria-hidden` on the tile: it is decorative, and the wordmark beside it
 		already carries the name. Without this a screen reader would announce
-		"k kommit".
+		"k kommitly".
 
 		When the wordmark is hidden the name still has to be available, so a
 		visually hidden copy takes its place.
@@ -39,9 +39,9 @@
 	<span class="tile k-cut" aria-hidden="true">k</span>
 
 	{#if showWordmark}
-		<span class="wordmark">kommit</span>
+		<span class="wordmark">kommitly</span>
 	{:else}
-		<span class="k-visually-hidden">kommit</span>
+		<span class="k-visually-hidden">kommitly</span>
 	{/if}
 </span>
 

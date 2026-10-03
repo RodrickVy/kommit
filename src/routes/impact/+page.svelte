@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>Impact · kommit</title>
+	<title>Impact · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Impact" />

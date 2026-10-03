@@ -1,7 +1,7 @@
 /**
  * Authentication domain types.
  *
- * These are kommit's own types, not Supabase's. The application depends on
+ * These are kommitly's own types, not Supabase's. The application depends on
  * this narrow shape rather than on `@supabase/supabase-js`'s much wider
  * `User` object, which carries identities, factors, metadata and timestamps
  * that no part of the UI needs.

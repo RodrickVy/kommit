@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>Join · kommit</title>
+	<title>Join · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Join" />

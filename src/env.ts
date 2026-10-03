@@ -4,7 +4,7 @@ import { defineEnvVars } from '@sveltejs/kit/env';
  * Environment variable declarations.
  *
  * This file is the single, authoritative list of every environment variable
- * kommit reads. SvelteKit loads it at startup, runs each validator below, and
+ * kommitly reads. SvelteKit loads it at startup, runs each validator below, and
  * generates typed modules from the result:
  *
  *     import { PUBLIC_SUPABASE_URL } from '$app/env/public';        // anywhere
@@ -273,7 +273,7 @@ export const variables = defineEnvVars({
 		schema: optional,
 		description:
 			'Display name shown beside the from address in a mail client, e.g.\n' +
-			'"kommit". Optional even once email is live; SendGrid falls back to\n' +
+			'"kommitly". Optional even once email is live; SendGrid falls back to\n' +
 			'showing the bare address.'
 	}
 });

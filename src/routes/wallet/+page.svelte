@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>Wallet · kommit</title>
+	<title>Wallet · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Wallet" />

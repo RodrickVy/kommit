@@ -33,7 +33,7 @@
 		tab or a bookmark. Individual pages override it with their own
 		`<svelte:head>`.
 	-->
-	<title>kommit</title>
+	<title>kommitly</title>
 </svelte:head>
 
 <div class="shell">
@@ -60,6 +60,27 @@
 		display: grid;
 		grid-template-rows: auto 1fr auto;
 		min-height: 100svh;
+	}
+
+	/* Grid items default to `min-width: auto`, meaning their minimum size is
+	   their min-content size — and a track will grow BEYOND its container to
+	   honour that. One wide descendant is therefore enough to stretch this
+	   column past the viewport and drag every other row out with it.
+
+	   That is not hypothetical: the header's navigation did exactly this,
+	   forcing a 526px column inside a 410px viewport and giving the whole
+	   page a horizontal scrollbar. `min-width: 0` lets each row respect the
+	   viewport, which in turn lets the nav's own `overflow-x: auto` do the
+	   scrolling it was written to do.
+
+	   `:global(*)` is required, not stylistic. Svelte scopes a selector by
+	   demanding the element carry THIS component's hash, compiling a bare
+	   `.shell > *` into `.shell.svelte-abc > :where(.svelte-abc)`. The header
+	   and footer are root elements of child components and carry their own
+	   hashes, so that rule would silently skip exactly the two rows causing
+	   the overflow, and apply only to <main>. */
+	.shell > :global(*) {
+		min-width: 0;
 	}
 
 	.main {

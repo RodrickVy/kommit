@@ -21,12 +21,12 @@
 </script>
 
 <svelte:head>
-	<title>kommit</title>
-	<meta name="description" content="kommit" />
+	<title>kommitly</title>
+	<meta name="description" content="kommitly" />
 </svelte:head>
 
 <PageHeader
-	title="kommit"
+	title="kommitly"
 	description="Application shell. Routing, the design system and the Supabase connection are in place; features are built from here."
 />
 
@@ -96,11 +96,16 @@
 <style>
 	.panels {
 		display: grid;
-		/* `auto-fit` plus `minmax` gives a two-column layout where there is
-		   room and a single column where there is not, with no media query.
-		   The 20rem floor is the narrowest a panel can be before its
-		   label/value rows start wrapping awkwardly. */
-		grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+		/* `auto-fit` plus `minmax` gives two columns where there is room and
+		   one where there is not, with no media query. 20rem is the narrowest
+		   a panel should be before its label/value rows start wrapping badly.
+
+		   The `min(20rem, 100%)` rather than a bare `20rem` matters: a plain
+		   fixed minimum is a floor the track cannot go below, so on a viewport
+		   narrower than 20rem the grid overflows instead of fitting. Wrapping
+		   it in `min()` caps that floor at the container's own width, so the
+		   track shrinks the rest of the way on a small phone. */
+		grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
 		gap: var(--k-space-4);
 	}
 

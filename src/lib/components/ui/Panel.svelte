@@ -4,7 +4,7 @@
 	/**
 	 * Panel — the standard content surface.
 	 *
-	 * Every boxed region in kommit is a Panel: cards, form wrappers, summary
+	 * Every boxed region in kommitly is a Panel: cards, form wrappers, summary
 	 * blocks, empty states. Using it rather than a bare `<div>` is what keeps
 	 * the chamfer, the hairline and the padding rhythm identical everywhere.
 	 *
@@ -15,7 +15,7 @@
 	 */
 	interface Props {
 		/**
-		 * Which surface step to fill with. Depth in kommit is expressed by
+		 * Which surface step to fill with. Depth in kommitly is expressed by
 		 * lightness rather than drop shadows, because `clip-path` makes outer
 		 * shadows invisible.
 		 *

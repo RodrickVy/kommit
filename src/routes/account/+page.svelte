@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>Account · kommit</title>
+	<title>Account · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Account" />

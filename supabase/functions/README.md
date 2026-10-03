@@ -4,7 +4,7 @@ Deno functions deployed to Supabase, one directory per function.
 
 ## When to use one, and when not to
 
-kommit is a server-rendered SvelteKit app running on Vercel's Node runtime, so
+kommitly is a server-rendered SvelteKit app running on Vercel's Node runtime, so
 most server-side work has a simpler home: a `+page.server.ts` load function, a
 form action, or a `+server.ts` endpoint. Those share the app's types, its
 Supabase client and its environment, and they deploy with the rest of the app

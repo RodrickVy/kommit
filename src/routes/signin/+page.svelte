@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>Sign in · kommit</title>
+	<title>Sign in · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Sign in" />

@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 
 	/**
-	 * Button — every clickable action in kommit.
+	 * Button — every clickable action in kommitly.
 	 *
 	 * Renders a real `<button>` when it performs an action, and a real `<a>`
 	 * when it navigates. That distinction is not cosmetic: a link can be

@@ -21,7 +21,7 @@
 </script>
 
 <svelte:head>
-	<title>Tap · kommit</title>
+	<title>Tap · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Tap" />

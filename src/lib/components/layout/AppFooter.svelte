@@ -8,7 +8,7 @@
 	 * Deliberately sparse. Its one functional job is to state which Solana
 	 * cluster the app is pointed at.
 	 *
-	 * That indicator is not decoration: kommit shows balances and signatures,
+	 * That indicator is not decoration: kommitly shows balances and signatures,
 	 * and the same interface looks identical whether it is moving test tokens
 	 * on devnet or real value on mainnet. Someone looking at a screenshot, a
 	 * bug report or a support ticket needs to be able to tell which. It is
@@ -82,7 +82,7 @@
 	.dot {
 		width: 0.5rem;
 		height: 0.5rem;
-		/* Square, like everything else in kommit. */
+		/* Square, like everything else in kommitly. */
 		background-color: var(--k-warning);
 	}
 

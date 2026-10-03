@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>Discover · kommit</title>
+	<title>Discover · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Discover" description="Discover transactions." />

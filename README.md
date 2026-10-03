@@ -1,6 +1,6 @@
-# kommit
+# kommitly
 
-Kommit is a peer-to-peer marketplace where buyers and sellers put down
+Kommitly is a peer-to-peer marketplace where buyers and sellers put down
 refundable commitment fees to prove they’ll show up, making local transactions
 more reliable and trustworthy.
 
@@ -118,7 +118,7 @@ src/
       supabase/            Request-scoped client, and the privileged client
     supabase/
       database.types.ts    Generated — do not edit. `npm run db:types`
-    types/                 Domain types owned by kommit, not by Supabase
+    types/                 Domain types owned by kommitly, not by Supabase
 
   routes/                  One directory per URL
 
@@ -284,13 +284,13 @@ tokens (`--k-surface`, `--k-primary`, `--k-text-muted`), never the raw palette
 (`--k-teal-500`) and never a literal colour. That indirection is what makes
 retheming a one-file change.
 
-**kommit has no rounded corners.** Corners are chamfered — cut at 45° — via
+**kommitly has no rounded corners.** Corners are chamfered — cut at 45° — via
 the global `.k-cut` class, sized by `--k-cut`.
 
 The consequence worth knowing: `clip-path` clips an element's `outline` and
 any outer `box-shadow`, so on a cut element a border is sliced at the corners,
 a drop shadow is invisible, and the browser's default focus ring **disappears
-entirely**. kommit therefore draws borders and focus rings as **inset**
+entirely**. kommitly therefore draws borders and focus rings as **inset**
 shadows, which paint inside the clip and trace the chamfer exactly, and
 expresses depth with surface lightness instead of shadows. Section 6 of
 `app.css` explains it in full. This is the one technique the visual language

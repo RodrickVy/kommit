@@ -21,7 +21,7 @@
 </script>
 
 <svelte:head>
-	<title>Check in · kommit</title>
+	<title>Check in · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Check in" />

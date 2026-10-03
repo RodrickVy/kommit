@@ -45,7 +45,7 @@
 
 <header class="header">
 	<div class="inner">
-		<a href="/" class="brand-link" aria-label="kommit home">
+		<a href="/" class="brand-link" aria-label="kommitly home">
 			<BrandMark />
 		</a>
 

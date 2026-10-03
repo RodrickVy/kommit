@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>Commitments · kommit</title>
+	<title>Commitments · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Commitments" />

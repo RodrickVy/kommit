@@ -11,7 +11,7 @@
 </script>
 
 <svelte:head>
-	<title>Create listing · kommit</title>
+	<title>Create listing · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Create listing" />

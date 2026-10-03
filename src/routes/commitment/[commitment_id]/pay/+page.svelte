@@ -21,7 +21,7 @@
 </script>
 
 <svelte:head>
-	<title>Pay · kommit</title>
+	<title>Pay · kommitly</title>
 </svelte:head>
 
 <PageHeader title="Pay" />

@@ -1,7 +1,7 @@
 /**
  * The application's navigation map.
  *
- * This is the single source of truth for kommit's primary navigation. The
+ * This is the single source of truth for kommitly's primary navigation. The
  * header renders from this array; nothing hardcodes a link label or path.
  * Adding a destination means adding one entry here.
  *
