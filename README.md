@@ -331,10 +331,18 @@ the Edge runtime does not provide.
 | Install Command    | `npm ci`                           |
 | Node.js Version    | 22.x                               |
 
+**The preset must be `SvelteKit`, not `Svelte`.** Vercel offers both. `Svelte`
+is for a plain Svelte SPA built with Vite: it expects a static `dist/` folder
+and creates no serverless functions, so server-side rendering, every
+`+page.server.ts` and every form action would silently disappear. The build
+still reports success and then serves a broken static site. Vercel normally
+detects the right one from `@sveltejs/kit` in `package.json` — having it in
+`devDependencies` is correct and does not affect detection.
+
 **Output Directory must stay empty.** `adapter-vercel` writes to
-`.vercel/output` using the Build Output API, which Vercel detects on its own.
-Naming any directory here overrides that detection and the deployment serves
-nothing.
+`.vercel/output` using the Build Output API, which Vercel detects on its own,
+whatever the preset. Naming any directory here overrides that detection and the
+deployment serves nothing.
 
 `npm ci` rather than `npm install`: it installs the lockfile exactly and fails
 if `package.json` and the lockfile disagree, which is what we want given every
