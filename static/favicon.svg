@@ -1,0 +1,28 @@
+<!--
+	kommit favicon.
+
+	The same chamfered teal tile as `BrandMark.svelte`, drawn at 32x32. The
+	polygon takes 5px off each corner, matching the `--k-cut` treatment used
+	throughout the app, so the browser tab reads as part of the same system.
+
+	Colours are literal here rather than tokens: an SVG served as a static
+	asset has no access to the app's stylesheet. They are the resolved values
+	of `--k-teal-500` and `--k-ink-950`. If the brand hue changes in
+	`app.css`, change it here too.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+	<polygon
+		points="5,0 27,0 32,5 32,27 27,32 5,32 0,27 0,5"
+		fill="#12a894"
+	/>
+	<text
+		x="16"
+		y="17"
+		fill="#0c1111"
+		font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+		font-size="21"
+		font-weight="700"
+		text-anchor="middle"
+		dominant-baseline="central"
+	>k</text>
+</svg>

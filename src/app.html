@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+
+		<!--
+			`%sveltekit.assets%` resolves to the asset base path, which differs
+			between dev and a deployed build. Never hardcode `/` here.
+		-->
+		<link rel="icon" href="%sveltekit.assets%/favicon.svg" type="image/svg+xml" />
+
+		<!--
+			SvelteKit injects <title>, <meta> and preload tags for the matched
+			route here. Per-page titles are set with <svelte:head> in the page
+			component, never in this file.
+		-->
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<!--
+			The rendered app. `display: contents` means this wrapper creates no
+			layout box of its own, so the layout component's own grid is the
+			one that governs the page.
+		-->
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>

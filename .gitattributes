@@ -1,0 +1,22 @@
+# Line endings.
+#
+# Git stores LF in the repository and, without instruction, checks out CRLF on
+# Windows. That is invisible until someone on macOS or Linux — or the Vercel
+# build, which runs on Linux — touches the same file, at which point the diff
+# shows every line as changed and review becomes impossible.
+#
+# `text=auto eol=lf` normalises to LF both in the repository and in the working
+# copy, on every platform. Every tool in this project (Node, Vite, the editors
+# people use) handles LF natively on Windows.
+* text=auto eol=lf
+
+# Never apply line-ending conversion to binary content: it corrupts the file.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.webp binary
+*.woff binary
+*.woff2 binary
+*.pdf binary

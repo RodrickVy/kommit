@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# SvelteKit build output and generated types
+.svelte-kit/
+build/
+.vercel/
+
+# Environment files. Only .env.example is committed; it documents the
+# variables without carrying any real values.
+.env
+.env.*
+!.env.example
+
+# Supabase CLI function secrets. `.branches/` and `.temp/` are already
+# covered by supabase/.gitignore, which the CLI generates and maintains.
+# `config.toml`, `migrations/` and `functions/` ARE committed — they are the
+# source of truth for the database.
+supabase/.env
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db
+.idea/
+*.log
+
+# Local editor/agent scratch config. `.claude/launch.json` just records how to
+# start the dev server; it is not part of the project's build.
+.claude/

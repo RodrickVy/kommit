@@ -1,0 +1,435 @@
+/* ==========================================================================
+   kommit — design tokens and base styles
+   ==========================================================================
+
+   This is the only global stylesheet. Everything else lives in a component's
+   own scoped <style> block.
+
+   THE ONE RULE
+   ------------
+   Components must only ever reference SEMANTIC tokens (--k-surface,
+   --k-primary, --k-text-muted). They must never reference the raw palette
+   scale (--k-teal-500) or hardcode a literal colour. The raw scale exists
+   only to be assigned to semantic tokens in this file. That indirection is
+   what lets us retheme, or add a light theme, by editing this file alone.
+
+   SHAPE
+   -----
+   kommit has no rounded corners anywhere. Corners are chamfered — cut at 45
+   degrees. See the .k-cut section below for how that is implemented, and why
+   borders and focus rings are drawn with INSET shadows.
+
+   ORDER OF THIS FILE
+   ------------------
+     1. Raw palette          — the only place literal colours appear
+     2. Semantic tokens      — what components actually consume
+     3. Scale tokens         — space, type, layout, motion
+     4. Reset                — flatten browser defaults
+     5. Base element styles  — document, headings, links, form controls
+     6. Shape primitives     — .k-cut and friends
+     7. Accessibility        — focus, reduced motion, screen-reader helpers
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. RAW PALETTE
+   The only block in the codebase allowed to contain literal colour values.
+   Not consumed directly by components — see THE ONE RULE above.
+   -------------------------------------------------------------------------- */
+:root {
+	/* Teal — the brand hue. 500 is the anchor; lighter steps are used for
+	   text on dark surfaces, darker steps for pressed states. */
+	--k-teal-200: #7fe9db;
+	--k-teal-300: #45dbc8;
+	--k-teal-400: #1fc5b0;
+	--k-teal-500: #12a894;
+	--k-teal-600: #0e8878;
+	--k-teal-700: #0b6a5e;
+	--k-teal-900: #06332e;
+
+	/* Ink — the neutral scale. Cool-shifted so it sits with teal rather than
+	   fighting it. 950 is the page background, 50 is primary text. */
+	--k-ink-50: #f2f6f6;
+	--k-ink-200: #c3cfcf;
+	--k-ink-400: #869898;
+	--k-ink-500: #6b7d7d;
+	--k-ink-600: #4d5c5c;
+	--k-ink-700: #2f3b3b;
+	--k-ink-800: #1e2727;
+	--k-ink-900: #141b1b;
+	--k-ink-950: #0c1111;
+
+	/* Status hues. Deliberately desaturated so they read as information
+	   rather than alarm, and so they do not clash with teal. */
+	--k-red-400: #f2706b;
+	--k-red-600: #c0392f;
+	--k-amber-400: #e8b04b;
+	--k-green-400: #5ec98a;
+}
+
+/* --------------------------------------------------------------------------
+   2. SEMANTIC TOKENS
+   The component-facing API. Dark is the only scheme today; a light theme
+   would be added as a [data-theme='light'] block here and nowhere else.
+   -------------------------------------------------------------------------- */
+:root {
+	/* Surfaces, from furthest back to closest to the viewer.
+	   Because clip-path prevents us from using drop shadows (see section 6),
+	   depth is communicated entirely by these steps in lightness. */
+	--k-bg: var(--k-ink-950);
+	--k-surface: var(--k-ink-900);
+	--k-surface-raised: var(--k-ink-800);
+	--k-surface-sunken: #080c0c;
+
+	/* Text, in descending prominence. --k-text-subtle is the quietest step
+	   that still meets WCAG AA against --k-surface; anything fainter than
+	   this is not allowed to carry meaning. */
+	--k-text: var(--k-ink-50);
+	--k-text-muted: var(--k-ink-200);
+	--k-text-subtle: var(--k-ink-500);
+
+	/* Hairlines. --k-line separates; --k-line-strong encloses. */
+	--k-line: var(--k-ink-700);
+	--k-line-strong: var(--k-ink-600);
+
+	/* Primary action. --k-on-primary is the only colour guaranteed legible
+	   on top of --k-primary, so never pair primary with --k-text. */
+	--k-primary: var(--k-teal-500);
+	--k-primary-hover: var(--k-teal-400);
+	--k-primary-active: var(--k-teal-600);
+	--k-primary-quiet: var(--k-teal-900);
+	--k-on-primary: var(--k-ink-950);
+
+	/* Brand accent for text and icons on dark surfaces. Lighter than
+	   --k-primary because small text needs more contrast than a fill. */
+	--k-accent: var(--k-teal-300);
+
+	/* Status. Each is a text/icon colour, not a fill. */
+	--k-danger: var(--k-red-400);
+	--k-danger-strong: var(--k-red-600);
+	--k-warning: var(--k-amber-400);
+	--k-success: var(--k-green-400);
+
+	/* Focus ring. Intentionally not the brand colour: a focus indicator must
+	   stay visible on primary-coloured controls too. */
+	--k-focus: var(--k-teal-200);
+}
+
+/* --------------------------------------------------------------------------
+   3. SCALE TOKENS
+   -------------------------------------------------------------------------- */
+:root {
+	/* -- Shape ------------------------------------------------------------
+	   --k-cut is the length of the 45-degree chamfer taken off each corner.
+	   Override it on an individual element to resize that element's cut:
+	   style="--k-cut: 4px". */
+	--k-cut: 10px;
+	--k-cut-sm: 6px;
+	--k-cut-lg: 18px;
+
+	/* Hairline width, as a token so a border and the focus ring that has to
+	   sit flush against it cannot drift apart. */
+	--k-line-width: 1px;
+
+	/* -- Space ------------------------------------------------------------
+	   A 4px base scale. Using named steps rather than arbitrary px values is
+	   what keeps rhythm consistent across components written weeks apart. */
+	--k-space-1: 0.25rem; /*  4px */
+	--k-space-2: 0.5rem; /*   8px */
+	--k-space-3: 0.75rem; /* 12px */
+	--k-space-4: 1rem; /*    16px */
+	--k-space-5: 1.5rem; /*  24px */
+	--k-space-6: 2rem; /*    32px */
+	--k-space-7: 3rem; /*    48px */
+	--k-space-8: 4rem; /*    64px */
+
+	/* -- Type -------------------------------------------------------------
+	   System font stack: no webfont request, no layout shift, no extra CSP
+	   origin to allow. --k-font-mono is used for on-chain values —
+	   addresses, signatures, amounts — where character alignment matters and
+	   a zero must be distinguishable from a capital O. */
+	--k-font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial,
+		sans-serif;
+	--k-font-mono: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Consolas, monospace;
+
+	/* Body sizes are fixed; display sizes are fluid via clamp() so headings
+	   shrink on narrow viewports without a media query. */
+	--k-text-xs: 0.75rem;
+	--k-text-sm: 0.875rem;
+	--k-text-base: 1rem;
+	--k-text-lg: 1.125rem;
+	--k-text-xl: clamp(1.25rem, 1.1rem + 0.6vw, 1.5rem);
+	--k-text-2xl: clamp(1.5rem, 1.25rem + 1.2vw, 2rem);
+	--k-text-3xl: clamp(2rem, 1.5rem + 2.4vw, 3rem);
+
+	--k-leading-tight: 1.15;
+	--k-leading-normal: 1.6;
+
+	/* Negative tracking on display type, positive on small-caps labels. */
+	--k-tracking-tight: -0.02em;
+	--k-tracking-wide: 0.08em;
+
+	/* -- Layout -----------------------------------------------------------
+	   --k-container is the maximum content width. --k-header-h is shared
+	   between the header itself and any sticky offset that has to clear it,
+	   so the two cannot disagree. */
+	--k-container: 72rem;
+	--k-header-h: 4rem;
+
+	/* -- Motion -----------------------------------------------------------
+	   Two durations only: fast for a state change on a control the user is
+	   touching, base for anything larger. Both are collapsed by the
+	   prefers-reduced-motion block in section 7. */
+	--k-duration-fast: 120ms;
+	--k-duration-base: 220ms;
+	--k-ease: cubic-bezier(0.2, 0.6, 0.2, 1);
+}
+
+/* --------------------------------------------------------------------------
+   4. RESET
+   Narrow and intentional — only the browser defaults that actively get in
+   the way. Not a third-party reset.
+   -------------------------------------------------------------------------- */
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+/* Browsers apply a default margin to headings, paragraphs and lists that
+   fights any spacing system. Components opt back in explicitly. */
+body,
+h1,
+h2,
+h3,
+h4,
+p,
+figure,
+blockquote,
+dl,
+dd,
+ul,
+ol {
+	margin: 0;
+}
+
+ul[role='list'],
+ol[role='list'] {
+	list-style: none;
+	padding: 0;
+}
+
+/* Media should never overflow its container. */
+img,
+picture,
+video,
+canvas,
+svg {
+	display: block;
+	max-width: 100%;
+}
+
+/* Form controls do not inherit typography by default. */
+input,
+button,
+textarea,
+select {
+	font: inherit;
+	color: inherit;
+}
+
+/* --------------------------------------------------------------------------
+   5. BASE ELEMENT STYLES
+   -------------------------------------------------------------------------- */
+
+/* color-scheme tells the browser to render its own UI — scrollbars, form
+   control internals, the canvas behind the page — in dark mode. Without it
+   those stay light and flash white on load. */
+html {
+	color-scheme: dark;
+	background-color: var(--k-bg);
+	-webkit-text-size-adjust: 100%;
+}
+
+body {
+	min-height: 100svh;
+	background-color: var(--k-bg);
+	color: var(--k-text);
+	font-family: var(--k-font-sans);
+	font-size: var(--k-text-base);
+	line-height: var(--k-leading-normal);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+h1,
+h2,
+h3,
+h4 {
+	line-height: var(--k-leading-tight);
+	letter-spacing: var(--k-tracking-tight);
+	font-weight: 600;
+	text-wrap: balance;
+}
+
+h1 {
+	font-size: var(--k-text-3xl);
+}
+
+h2 {
+	font-size: var(--k-text-2xl);
+}
+
+h3 {
+	font-size: var(--k-text-xl);
+}
+
+h4 {
+	font-size: var(--k-text-lg);
+}
+
+/* Stop a paragraph ending on a single orphaned word. */
+p {
+	text-wrap: pretty;
+}
+
+a {
+	color: var(--k-accent);
+	text-decoration: underline;
+	/* Keep the underline clear of descenders rather than striking through
+	   them, which is what the default does. */
+	text-underline-offset: 0.2em;
+	text-decoration-thickness: 1px;
+	transition: color var(--k-duration-fast) var(--k-ease);
+}
+
+a:hover {
+	color: var(--k-teal-200);
+}
+
+code,
+pre,
+samp,
+kbd {
+	font-family: var(--k-font-mono);
+	font-size: 0.9em;
+}
+
+hr {
+	border: 0;
+	border-top: var(--k-line-width) solid var(--k-line);
+	margin: var(--k-space-5) 0;
+}
+
+/* --------------------------------------------------------------------------
+   6. SHAPE PRIMITIVES — the cut-corner system
+   --------------------------------------------------------------------------
+
+   .k-cut takes a 45-degree bite out of all four corners, sized by --k-cut.
+
+   WHY INSET SHADOWS, NOT BORDERS
+   ------------------------------
+   clip-path clips everything the element paints, including its outline and
+   any outer box-shadow. So on a clipped element:
+
+     - a border is clipped at the corners and leaves the chamfer bare
+     - an outer box-shadow is invisible
+     - an outline — including the browser's default focus ring — vanishes,
+       which would be an accessibility failure
+
+   An INSET box-shadow is painted inside the element's own box, so it is
+   clipped to the same octagon and traces the chamfer exactly. Hence:
+   borders and focus rings throughout kommit are inset shadows, and depth is
+   expressed with surface lightness (section 2) instead of drop shadows.
+   This is the single technique the whole visual language rests on.
+   -------------------------------------------------------------------------- */
+.k-cut {
+	clip-path: polygon(
+		var(--k-cut) 0,
+		calc(100% - var(--k-cut)) 0,
+		100% var(--k-cut),
+		100% calc(100% - var(--k-cut)),
+		calc(100% - var(--k-cut)) 100%,
+		var(--k-cut) 100%,
+		0 calc(100% - var(--k-cut)),
+		0 var(--k-cut)
+	);
+}
+
+/* A hairline that follows the chamfer. Composes with .k-cut; on its own it
+   is simply a 1px inset ring. */
+.k-outline {
+	box-shadow: inset 0 0 0 var(--k-line-width) var(--k-line);
+}
+
+.k-outline-strong {
+	box-shadow: inset 0 0 0 var(--k-line-width) var(--k-line-strong);
+}
+
+/* --------------------------------------------------------------------------
+   7. ACCESSIBILITY
+   -------------------------------------------------------------------------- */
+
+/* Default focus ring for anything NOT clipped. :focus-visible rather than
+   :focus, so a mouse click does not leave a ring behind while keyboard
+   navigation always shows one. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+	outline: 2px solid var(--k-focus);
+	outline-offset: 2px;
+}
+
+/* Focus ring for clipped elements, where an outline would be invisible.
+   Drawn inside the box so the clip cannot remove it. Two rings are stacked:
+   a dark one against the element's own fill, then the bright focus colour,
+   so the ring reads whatever the element is filled with. */
+/* The selector repeats .k-cut deliberately, to raise its specificity to
+   (0,3,0). A component's scoped class compiles to `.button.svelte-xyz`,
+   which is (0,2,0) — the same as a single `.k-cut:focus-visible` would be.
+   On a tie the cascade falls back to source order, which depends on bundle
+   ordering and could silently drop the focus ring on any component that sets
+   its own box-shadow border. An accessibility guarantee must not rest on
+   that, so this rule is made unambiguously stronger. */
+.k-cut.k-cut:focus-visible {
+	outline: none;
+	box-shadow:
+		inset 0 0 0 var(--k-line-width) var(--k-bg),
+		inset 0 0 0 3px var(--k-focus);
+}
+
+/* Visually hidden but still announced by screen readers. Used for text that
+   would be redundant for sighted users, such as the label of an icon-only
+   button. */
+.k-visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* Target for the "skip to content" link. scroll-margin-top keeps the sticky
+   header from covering the heading once focus jumps here. */
+:target {
+	scroll-margin-top: calc(var(--k-header-h) + var(--k-space-4));
+}
+
+/* Respect an operating-system request for reduced motion. Collapsing the
+   duration tokens is enough, because every transition in the codebase is
+   expressed in terms of them. */
+@media (prefers-reduced-motion: reduce) {
+	:root {
+		--k-duration-fast: 0.01ms;
+		--k-duration-base: 0.01ms;
+	}
+
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+		scroll-behavior: auto !important;
+	}
+}

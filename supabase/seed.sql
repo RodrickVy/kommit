@@ -1,0 +1,31 @@
+-- ============================================================================
+-- Seed data
+-- ============================================================================
+--
+-- Run automatically at the end of `npm run db:reset`, after every migration
+-- has been applied. Configured in `supabase/config.toml` under `[db.seed]`.
+--
+-- WHAT BELONGS HERE
+-- -----------------
+-- Data needed to run the app locally: reference rows, a handful of example
+-- records, test accounts. Anything that makes a fresh checkout usable without
+-- clicking through the UI to create it.
+--
+-- WHAT DOES NOT
+-- -------------
+-- Schema. Tables, policies, functions and triggers go in
+-- `supabase/migrations/` — see the README there. This file runs on every
+-- reset, so anything defined here would be invisible to production, which
+-- only ever runs migrations.
+--
+-- RULES
+-- -----
+-- Must be idempotent. Use `on conflict do nothing` or explicit ids so that
+-- running it twice is harmless.
+--
+-- Must never contain real user data, real keys, or anything that would matter
+-- if it leaked. This file is committed.
+--
+-- There is no schema yet, so there is nothing to seed. The first migration
+-- that creates a table should add its seed rows here in the same change.
+-- ============================================================================
