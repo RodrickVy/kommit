@@ -323,13 +323,20 @@ the Edge runtime does not provide.
 
 ### Vercel project settings
 
-| Setting            | Value                              |
-| ------------------ | ---------------------------------- |
-| Framework Preset   | SvelteKit (auto-detected)          |
-| Build Command      | `npm run build`                    |
-| Output Directory   | **leave empty**                    |
-| Install Command    | `npm ci`                           |
-| Node.js Version    | 22.x                               |
+Selecting the SvelteKit preset fills Build Command, Output Directory and
+Install Command with greyed-out **placeholders**. Those are defaults, not
+values — nothing is set until the override toggle is switched on. Only one
+field is worth overriding.
+
+| Setting          | What to do                              | Preset shows   |
+| ---------------- | --------------------------------------- | -------------- |
+| Framework Preset | Select `SvelteKit`                      | —              |
+| Build Command    | Leave alone                             | `vite build`   |
+| Output Directory | **Leave alone — do not type anything**  | `public`       |
+| Install Command  | Override with `npm ci` (optional)       | auto-detected  |
+| Node.js Version  | Set to 22.x                             | —              |
+
+`vite build` is exactly what `npm run build` runs, so the default is correct.
 
 **The preset must be `SvelteKit`, not `Svelte`.** Vercel offers both. `Svelte`
 is for a plain Svelte SPA built with Vite: it expects a static `dist/` folder
@@ -339,14 +346,18 @@ still reports success and then serves a broken static site. Vercel normally
 detects the right one from `@sveltejs/kit` in `package.json` — having it in
 `devDependencies` is correct and does not affect detection.
 
-**Output Directory must stay empty.** `adapter-vercel` writes to
-`.vercel/output` using the Build Output API, which Vercel detects on its own,
-whatever the preset. Naming any directory here overrides that detection and the
-deployment serves nothing.
+**Ignore the `public` placeholder under Output Directory.** It is a legacy
+default in Vercel's preset and no modern SvelteKit deploy uses it: once the
+build writes `.vercel/output/config.json`, Vercel switches to the Build Output
+API and ignores `outputDirectory` entirely. Leaving the field untouched is
+correct. Typing a real value is what breaks the deployment, because an explicit
+output directory overrides that detection and Vercel then serves a folder that
+does not exist.
 
-`npm ci` rather than `npm install`: it installs the lockfile exactly and fails
-if `package.json` and the lockfile disagree, which is what we want given every
-version is pinned.
+`npm ci` rather than `npm install` is the one override worth making.
+`npm install` respects the lockfile and works fine; `npm ci` additionally fails
+loudly if `package-lock.json` and `package.json` ever drift apart, which is the
+guarantee being paid for by pinning every version.
 
 Node 22.x matches the `runtime: 'nodejs22.x'` the adapter is configured with in
 `vite.config.ts`. Note that `.npmrc` sets `engine-strict=true`, so a Node
