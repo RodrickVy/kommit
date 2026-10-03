@@ -227,6 +227,15 @@ client-supplied, so trusting that would be an authentication bypass.
 The result is memoised per request in `hooks.server.ts`, so the check runs at
 most once per request however many times it is asked for.
 
+> **This project currently signs JWTs with HS256 — a symmetric secret.** With
+> symmetric signing, `getClaims()` cannot verify locally and falls back to an
+> HTTP round trip to the Auth server on every request, exactly like
+> `getUser()`. Switching the project to asymmetric signing keys (Supabase
+> dashboard → Project Settings → JWT Keys) lets verification happen locally
+> against a cached JWKS, with no network call after the first. The code does
+> not change — it is purely a project setting, and it is the difference
+> between one network round trip per page view and none.
+
 Supabase is **server-only** in this codebase. There is no browser client and
 no `onAuthStateChange` listener: auth happens through server form actions,
 which keeps the client bundle smaller and avoids two clients disagreeing about
@@ -312,9 +321,49 @@ Vercel, via `@sveltejs/adapter-vercel`, pinned to the Node.js runtime rather
 than Edge — the Solana libraries need Node built-ins (`crypto`, `buffer`) that
 the Edge runtime does not provide.
 
+### Vercel project settings
+
+| Setting            | Value                              |
+| ------------------ | ---------------------------------- |
+| Framework Preset   | SvelteKit (auto-detected)          |
+| Build Command      | `npm run build`                    |
+| Output Directory   | **leave empty**                    |
+| Install Command    | `npm ci`                           |
+| Node.js Version    | 22.x                               |
+
+**Output Directory must stay empty.** `adapter-vercel` writes to
+`.vercel/output` using the Build Output API, which Vercel detects on its own.
+Naming any directory here overrides that detection and the deployment serves
+nothing.
+
+`npm ci` rather than `npm install`: it installs the lockfile exactly and fails
+if `package.json` and the lockfile disagree, which is what we want given every
+version is pinned.
+
+Node 22.x matches the `runtime: 'nodejs22.x'` the adapter is configured with in
+`vite.config.ts`. Note that `.npmrc` sets `engine-strict=true`, so a Node
+version outside `^22.17 || >=24` fails the install outright rather than
+warning — that is deliberate, but it is the first thing to check if a build
+suddenly fails on an engine error.
+
+### Environment variables
+
 Set every variable from `.env.example` in the Vercel project's environment
 settings. Values are read at runtime, not inlined at build time, so one build
 can be promoted from preview to production without rebuilding.
+
+Vercel can import a `.env` file directly, but **do not import the local one
+unchanged**:
+
+- `PUBLIC_APP_URL` is `http://localhost:5173` locally. In production it must be
+  the real domain, or auth redirects and share links will point at localhost.
+  Preview deployments each get their own URL, so this cannot be one fixed value
+  across environments — when auth redirects are built, deriving the origin from
+  the request is likely better than a fixed variable.
+- The empty variables (`SENDGRID_*`, `SOLANA_TREASURY_*`) can simply be
+  omitted. They are declared optional, so absent and empty mean the same thing.
+- Set the rest for **Production and Preview** both. A variable set only for
+  Production makes every preview deployment fail at startup.
 
 > **Building on Windows:** `npm run build` compiles correctly but the Vercel
 > adapter then fails with `EPERM: operation not permitted, symlink` while
