@@ -14,7 +14,15 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		redirect(303, safeRedirectTarget(url.searchParams.get('redirectTo')));
 	}
 
-	return {};
+	/**
+	 * A message handed over by `/auth/callback` — an expired link, a link
+	 * already used. Shown here because this is where someone sent back from a
+	 * dead link can actually do something about it.
+	 *
+	 * Rendered as text, never as markup, so a crafted `?notice=` cannot inject
+	 * anything into the page.
+	 */
+	return { notice: url.searchParams.get('notice') };
 };
 
 export const actions: Actions = {

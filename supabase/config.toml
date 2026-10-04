@@ -190,10 +190,35 @@ max_indexes = 5
 enabled = true
 # The base URL of your website. Used as an allow-list for redirects and for constructing URLs used
 # in emails.
+# WHERE EMAIL LINKS GO WHEN NOTHING ELSE SAYS.
+#
+# Currently the dev server, which is correct while nobody has deployed.
+# IT MUST BECOME THE PRODUCTION DOMAIN BEFORE REAL USERS SIGN UP — otherwise
+# anyone who confirms an account is sent to a localhost address that only
+# exists on a developer's machine, and the link is dead for them.
+#
+# The app passes an explicit `emailRedirectTo` built from the request origin,
+# so each environment normally produces its own correct link and this value is
+# only the fallback. But the fallback is exactly what gets used when an origin
+# is NOT in additional_redirect_urls below — so a missing entry there turns
+# into a link pointing at this value.
 site_url = "http://localhost:5173"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
+# EVERY origin that may receive an email link must be listed here.
+#
+# An origin that is missing is not rejected loudly — Supabase quietly ignores
+# the requested redirect and uses site_url instead. The symptom is a
+# confirmation link that works perfectly in development and sends production
+# users to the wrong place.
+#
+# Before deploying, add:
+#   "https://<your-domain>/**"                  the production site
+#   "https://<vercel-project>-*.vercel.app/**"  preview deployments
+#
+# Keep the pattern tight. "https://*.vercel.app/**" would trust every project
+# hosted on Vercel, not just yours.
 additional_redirect_urls = ["http://localhost:5173/**"]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600

@@ -114,12 +114,20 @@ export const actions: Actions = {
 				data: { display_name: displayName },
 
 				/**
-				 * Where a confirmation link should land. Built from the request
-				 * origin rather than a configured value so it is correct in
-				 * local development, in previews and in production without
-				 * three different settings.
+				 * Where the confirmation link lands: `/auth/callback`, which
+				 * trades the one-time code for a session. Pointing it at a normal
+				 * page instead would deliver the visitor back to the site still
+				 * signed out, holding parameters nothing reads.
+				 *
+				 * Built from the REQUEST ORIGIN rather than a configured value,
+				 * so the link is correct in local development, on each preview
+				 * deployment and in production without three separate settings —
+				 * and so a preview never emails someone a production link.
+				 *
+				 * The origin must appear in the project's allowed redirect URLs
+				 * or Supabase ignores it and falls back to `site_url`.
 				 */
-				emailRedirectTo: `${url.origin}/signin`
+				emailRedirectTo: `${url.origin}/auth/callback`
 			}
 		});
 

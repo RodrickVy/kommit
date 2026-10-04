@@ -13,7 +13,7 @@
 	 * `form` holds whatever the action returned on failure: field errors, a
 	 * form-level message, and the email so it does not have to be retyped.
 	 */
-	let { form }: PageProps = $props();
+	let { data, form }: PageProps = $props();
 
 	/**
 	 * Disables the button and changes its label while the request is in
@@ -31,6 +31,12 @@
 	<PageHeader title="Sign in" />
 
 	<Panel>
+		{#if data.notice}
+			<div class="banner">
+				<Alert tone="info">{data.notice}</Alert>
+			</div>
+		{/if}
+
 		{#if form?.formError}
 			<div class="banner">
 				<Alert tone="error">{form.formError}</Alert>
