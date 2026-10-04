@@ -1,6 +1,7 @@
 import { requireUser } from '#lib/server/auth/guards';
 import { fail } from '@sveltejs/kit';
 import { invokeFunction, loadWallet, type CreatedWallet } from '#lib/server/functions/invoke';
+import { loadWalletActivity } from '#lib/server/solana/activity';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -19,6 +20,11 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	return {
 		user,
 		wallet,
+		/**
+		 * Not awaited: streamed to the page, so the balance renders at once and
+		 * the history fills in when Solana answers.
+		 */
+		activity: wallet ? loadWalletActivity(locals.supabase, wallet.solana_address) : Promise.resolve(null),
 		/**
 		 * Three distinct states the page must tell apart:
 		 *   wallet set        — show the balance

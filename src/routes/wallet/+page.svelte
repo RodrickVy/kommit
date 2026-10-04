@@ -6,6 +6,7 @@
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import Field from '#lib/components/ui/Field.svelte';
 	import RefreshButton from '#lib/components/wallet/RefreshButton.svelte';
+	import WalletActivity from '#lib/components/wallet/WalletActivity.svelte';
 	import WalletBalance from '#lib/components/wallet/WalletBalance.svelte';
 	import type { PageProps } from './$types';
 
@@ -155,9 +156,21 @@
 			</form>
 		</Panel>
 	</div>
+
+	<div class="activity">
+		<WalletActivity
+			activity={data.activity}
+			solPriceCents={data.wallet.sol_price_cents}
+			currencyCode={data.wallet.currency_code}
+		/>
+	</div>
 {/if}
 
 <style>
+	.activity {
+		margin-top: var(--k-space-4);
+	}
+
 	.banner {
 		margin-bottom: var(--k-space-4);
 	}
