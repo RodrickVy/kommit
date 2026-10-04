@@ -46,10 +46,9 @@ regardless of whether tests pass.
 
 ### Money
 
-1. **All amounts are integers in fiat minor units (cents).** No floating point
-   anywhere — not in JSON, not in the database, not in intermediate
-   arithmetic. A JSON payload containing `10.50` must be rejected, not
-   rounded.
+1. **All amounts are integers in CAD cents.** No floating point anywhere — not
+   in JSON, not in the database, not in intermediate arithmetic. A JSON
+   payload containing `10.50` must be rejected, not rounded.
 2. **`available_balance_cents` and `locked_balance_cents` are never negative.**
    Any operation that would make either negative fails and changes nothing.
 3. **For every wallet, at all times:**
@@ -523,7 +522,7 @@ A build doing any of the following is wrong, regardless of behaviour:
 | `SOLANA_RPC_URL` | Chain endpoint. |
 | `SOLANA_TREASURY_PUBLIC_KEY` | Treasury address. |
 | `SOLANA_TREASURY_PRIVATE_KEY` | Treasury signing key. Set via `supabase secrets set`, never in a file. |
-| Rate provider credentials | **Open question 2** — provider not yet chosen. |
+| Rate provider credentials | **Open question 1** — provider not yet chosen. |
 
 Edge Function secrets are separate from the application's `.env`. Set them
 with `npx supabase secrets set`.
@@ -535,28 +534,28 @@ with `npx supabase secrets set`.
 | Question | Answer |
 | --- | --- |
 | Custody | **Custodial.** This service holds the keys; users never manage their own. |
-| Unit of account | **Fiat cents.** SOL is a deposit and withdrawal rail only. |
+| Currency | **CAD cents** throughout. |
+| Unit of account | SOL is a deposit and withdrawal rail only; the ledger is CAD. |
 | How charities are paid | **They hold a wallet.** A forfeit is an ordinary two-wallet transfer. |
+| Funding methods | **SOL only.** No bank or card path exists, so 6.3 is the sole way money enters. |
+| Wallet creation timing | **At account creation**, before any deposit — a user needs an address to send to. |
 
 ## 12. Open questions blocking implementation
 
-1. **Fiat currency** — USD or CAD? Determines the rate pair to quote against.
-2. **Rate provider** — which source for SOL/fiat, and how often is it
-   refreshed? A stale rate silently mis-credits every deposit, and the error is
-   invisible until someone reconciles.
-3. **Is a rate quoted to the user before they deposit?** If a figure is shown
+1. **Rate provider** — which source for SOL/CAD, and how often is it refreshed?
+   A stale rate silently mis-credits every deposit, and the error is invisible
+   until someone reconciles.
+2. **Is a rate quoted to the user before they deposit?** If a figure is shown
    in advance, the tolerated drift between quote and credit must be defined.
-4. **Withdrawal minimum, and who pays the network fee** — taken from the
+3. **Withdrawal minimum, and who pays the network fee** — taken from the
    withdrawal amount, or absorbed by the treasury? This changes what a user
    receives, so it cannot be decided during implementation.
-5. **Key management.** Where do the custodial private keys live, how are they
+4. **Key management.** Where do the custodial private keys live, how are they
    encrypted, and who can reach them? **This is the largest unanswered
    security question in the contract and should be settled before a single key
    is generated** — retrofitting key storage means migrating live funds.
-6. **Reconciliation interval** for withdrawals left `pending`.
-7. **Deposit detection.** Operation 6.3 assumes it is *told* that SOL has
+5. **Reconciliation interval** for withdrawals left `pending`.
+6. **Deposit detection.** Operation 6.3 assumes it is *told* that SOL has
    arrived. Nothing in this contract watches the chain. Does a job poll, or
    does a provider webhook call in? Whoever builds that owns the
    at-least-once delivery problem, which is why 6.3 is idempotent.
-8. **Wallet creation timing** — at sign-up for every user, or lazily on first
-   deposit?
