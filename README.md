@@ -8,25 +8,32 @@ more reliable and trustworthy.
 
 ## Status
 
-This repository currently contains the **application shell**. What works:
+What works today:
 
-- every route exists and renders, with the layout, navigation and page titles
-  in place
-- the design system — tokens, the cut-corner shape language, and the shared
-  components everything else is built from
-- the Supabase connection, including request-scoped clients and verified
-  sessions
-- every environment variable, declared, documented and validated at startup
+- **Accounts** — sign up, sign in, sign out. Email and password for now; the
+  product specification describes passwordless email codes, which is a change
+  to two forms rather than to the data model.
+- **Listings** — create, edit, publish, withdraw and delete. Photographs upload
+  with per-file progress and per-file errors.
+- **Discover** — browse active listings, paginated.
+- **Optional sample data** — a checkbox on sign-up seeds a new account with
+  five listings, two meetup locations and weekly availability, so there is
+  something to look at immediately.
+- **Schema** — nine tables with Row Level Security, applied to the hosted
+  project. See [`docs/data-model.md`](docs/data-model.md).
 
-What does not exist yet, deliberately:
+What does not exist yet:
 
-- any database schema (`supabase/migrations/` is empty)
-- authentication flows — `/signin` and `/join` are empty pages
-- route guards, so no page is access-controlled yet
-- all page content beyond the home page's diagnostics
+- **Commitments.** The button is on the listing page and is deliberately
+  inert — no stake is calculated, nothing is locked, no row is written.
+- **Wallet and payments.** Specified in
+  [`docs/wallet-service-contract.md`](docs/wallet-service-contract.md), which
+  is written to be handed to whoever builds the Cloud Function.
+- **Check-in, QR verification, reputation, charities.**
 
-Pages are intentionally blank. Each is built in its own change, together with
-the services and queries it needs.
+The full product specification is not yet in this repository — it currently
+lives outside version control, which is worth fixing: the behavioural rules it
+defines are the source of truth for everything above.
 
 ## Tech stack
 

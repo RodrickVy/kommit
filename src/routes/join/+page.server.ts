@@ -1,5 +1,6 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { safeRedirectTarget } from '#lib/server/auth/guards';
+import { seedDemoData } from '#lib/server/seed/demo-data';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -37,6 +38,9 @@ export const actions: Actions = {
 		const email = String(form.get('email') ?? '').trim();
 		const password = String(form.get('password') ?? '');
 		const displayName = String(form.get('displayName') ?? '').trim();
+
+		/** An unchecked checkbox submits nothing at all, so absence means false. */
+		const withDemoData = form.get('withDemoData') !== null;
 
 		/**
 		 * Field-level errors, collected rather than returned on the first
@@ -95,7 +99,8 @@ export const actions: Actions = {
 				formError,
 				awaitingConfirmation: false,
 				email,
-				displayName
+				displayName,
+				withDemoData
 			});
 		};
 
@@ -145,6 +150,25 @@ export const actions: Actions = {
 		}
 
 		/**
+		 * Seed the account if asked, before either exit path below.
+		 *
+		 * Deliberately AFTER the account exists and BEFORE the redirect, so the
+		 * listings are already there when the user lands.
+		 *
+		 * A failure here is logged and swallowed. The account was created
+		 * successfully, and refusing to sign someone in because their sample
+		 * data could not be written would be a worse outcome than an empty
+		 * account — which is exactly what they would have had anyway.
+		 */
+		if (withDemoData && data.user) {
+			try {
+				await seedDemoData(data.user.id);
+			} catch (cause) {
+				console.error('Failed to seed demo data for new account', cause);
+			}
+		}
+
+		/**
 		 * Two outcomes, decided by the project's email-confirmation setting:
 		 *
 		 *   - confirmation OFF: a session is returned and the user is signed in
@@ -159,7 +183,8 @@ export const actions: Actions = {
 				formError: null,
 				awaitingConfirmation: true,
 				email,
-				displayName
+				displayName,
+				withDemoData
 			};
 		}
 

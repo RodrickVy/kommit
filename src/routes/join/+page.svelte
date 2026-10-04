@@ -115,6 +115,23 @@
 					</Field>
 				</div>
 
+				<!--
+					Checked by default. An empty marketplace cannot be evaluated —
+					there is nothing to browse and nothing to open — so the useful
+					default is to start with something in it. Anyone who wants an
+					empty account can clear it.
+				-->
+				<label class="demo-toggle">
+					<input type="checkbox" name="withDemoData" checked />
+					<span>
+						<strong>Add sample data</strong>
+						<span class="demo-detail">
+							Five example listings, two meetup locations and some weekly
+							availability, so there is something to look at straight away.
+						</span>
+					</span>
+				</label>
+
 				<div class="actions">
 					<Button type="submit" disabled={submitting}>
 						{submitting ? 'Creating account…' : 'Create account'}
@@ -146,6 +163,29 @@
 	.fields {
 		display: grid;
 		gap: var(--k-space-4);
+	}
+
+	.demo-toggle {
+		display: flex;
+		align-items: flex-start;
+		gap: var(--k-space-3);
+		margin-top: var(--k-space-5);
+		padding: var(--k-space-3);
+		background-color: var(--k-surface-raised);
+		font-size: var(--k-text-sm);
+		cursor: pointer;
+	}
+
+	.demo-toggle input {
+		/* Nudged to sit on the first line of the label rather than its top. */
+		margin-top: 0.2em;
+		accent-color: var(--k-primary);
+	}
+
+	.demo-detail {
+		display: block;
+		margin-top: var(--k-space-1);
+		color: var(--k-text-muted);
 	}
 
 	.actions {

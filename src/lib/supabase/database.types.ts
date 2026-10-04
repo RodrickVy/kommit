@@ -14,6 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
+      availability_rules: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_archived: boolean
+          profile_id: string
+          start_time: string
+          timezone: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_archived?: boolean
+          profile_id: string
+          start_time: string
+          timezone?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_archived?: boolean
+          profile_id?: string
+          start_time?: string
+          timezone?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "availability_rules_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_availability_rules: {
+        Row: {
+          availability_rule_id: string
+          listing_id: string
+        }
+        Insert: {
+          availability_rule_id: string
+          listing_id: string
+        }
+        Update: {
+          availability_rule_id?: string
+          listing_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_availability_rules_availability_rule_id_fkey"
+            columns: ["availability_rule_id"]
+            isOneToOne: false
+            referencedRelation: "availability_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_availability_rules_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_images: {
         Row: {
           created_at: string
@@ -42,6 +113,36 @@ export type Database = {
             columns: ["listing_id"]
             isOneToOne: false
             referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      listing_meetup_locations: {
+        Row: {
+          listing_id: string
+          meetup_location_id: string
+        }
+        Insert: {
+          listing_id: string
+          meetup_location_id: string
+        }
+        Update: {
+          listing_id?: string
+          meetup_location_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "listing_meetup_locations_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "listing_meetup_locations_meetup_location_id_fkey"
+            columns: ["meetup_location_id"]
+            isOneToOne: false
+            referencedRelation: "meetup_locations"
             referencedColumns: ["id"]
           },
         ]
@@ -184,6 +285,47 @@ export type Database = {
           {
             foreignKeyName: "market_settings_history_changed_by_fkey"
             columns: ["changed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meetup_locations: {
+        Row: {
+          created_at: string
+          id: string
+          is_archived: boolean
+          latitude: number
+          longitude: number
+          name: string
+          profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          latitude: number
+          longitude: number
+          name: string
+          profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          latitude?: number
+          longitude?: number
+          name?: string
+          profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_locations_profile_id_fkey"
+            columns: ["profile_id"]
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
