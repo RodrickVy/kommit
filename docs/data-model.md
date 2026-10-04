@@ -424,6 +424,31 @@ are two different facts about one event, and §5 requires both be kept. The
 status records what happened to the request; `responsible_party` plus the
 event log records the seller behaviour. No automatic penalty is applied.
 
+### Declining is not held against anyone
+
+Either party may decline before acceptance — the seller refusing a request, or
+the buyer withdrawing their own. **Neither is a recorded behaviour.** The
+`declined` status exists so the request has an honest end state, but it feeds
+no counter and no reputation input.
+
+This is deliberate. Saying no promptly is the *good* outcome: it frees the
+seller's calendar and tells the buyer immediately. Penalising it would push
+people to ignore requests instead, which is the behaviour the ignored counter
+exists to discourage. Declining and ignoring must never both be recorded for
+one request — they are opposites.
+
+### A request that outlives its meetup
+
+A `pending` request whose `scheduled_at` passes without ever being accepted
+resolves to **`stale`**, not `expired`.
+
+Under the lead-time rule above this should be unreachable: the request would
+have expired five hours before the meetup. It is defined anyway because an
+undefined state in a money-handling system is worse than a redundant rule — if
+a clock skews or a scheduled job misses a run, the row still resolves somewhere
+sensible. `stale` is the right destination: nobody acted, nobody is at fault,
+and no stake was ever locked because acceptance never happened.
+
 ### When a request expires
 
 A request has a 24-hour acceptance window, **but never one that runs so close
@@ -472,7 +497,11 @@ places at once, even across different listings. Two accepted commitments at the
 same instant would guarantee at least one no-show — and the model would then
 penalise someone for a situation the platform created.
 
-Taken together, a commitment is unique on **seller, item, and moment**.
+**One accepted commitment per buyer per moment**, for exactly the same reason.
+The rule is symmetric: neither side can be in two places at once.
+
+Taken together, a commitment is unique on **seller, item, and moment**, and
+separately on **buyer and moment**.
 
 Both are partial unique indexes restricted to live statuses, so a cancelled,
 expired or stale commitment releases its hold and the listing returns to
@@ -744,13 +773,34 @@ operational values it needs — radius, expiry windows, base fee — and nothing
 else. The parameter columns should not be readable by ordinary users: exposing
 the exact weights behind reputation invites gaming them.
 
-Since this is one row that everything depends on, its history is worth
-keeping. A `market_settings_history` table recording each change, who made it
-and when would let a reputation score be explained after the fact — "this
-stake was calculated under these parameters". **Not included above, because it
-was not requested; flagged as a recommendation.**
+## 18. `market_settings_history`
 
-## 18. `notifications`
+Append-only. One row per change to `market_settings`.
+
+`market_settings` holds a single mutable row, so editing it destroys what came
+before. That matters because stakes and reputation scores are calculated from
+those parameters: without a history, a stake charged last month cannot be
+explained, and "why was I asked for $13?" has no answer once the weights have
+moved on.
+
+| Field | Type | Null | Notes |
+| --- | --- | --- | --- |
+| `id` | `uuid` | no | PK. |
+| `changed_at` | `timestamptz` | no | |
+| `changed_by` | `uuid` | yes | FK to `profiles(id)`. Null for a system or migration change. |
+| `snapshot` | `jsonb` | no | The complete settings row **as it was after the change**. |
+| `note` | `text` | yes | Optional reason for the change. |
+
+A whole-row snapshot is stored rather than a field-level diff. A diff is
+smaller but has to be replayed from the beginning to reconstruct any past
+state, and a single missed row silently corrupts everything after it. A
+snapshot answers "what were the parameters at 3pm on the 14th?" with one query
+and no reconstruction.
+
+Written by a database trigger on `market_settings`, not by application code, so
+no path can update settings without recording the change.
+
+## 19. `notifications`
 
 §34 requires the platform to communicate state changes so that users never need
 to exchange contact details. That implies stored, per-user messages.
@@ -802,20 +852,12 @@ Recorded so the reasoning is not re-litigated later.
 | Listing quantity | **None.** One listing is one item; three identical chairs are three listings. |
 | Minimum notice | **5 hours** between acceptance and the meetup, which also floors how soon a meetup can be requested. |
 | Request expiry | `LEAST(created_at + 24h, scheduled_at - 5h)`. |
+| Pending past its meetup time | Resolves to **`stale`** — nobody acted, nobody at fault, no stake was ever locked. |
+| Buyer double-booking | **Not allowed.** The rule is symmetric with the seller's. |
+| Declining | **Not a recorded behaviour**, for either party. Declining and ignoring are opposites and never both recorded. |
+| `market_settings_history` | **Approved and specified** — whole-row snapshots, written by trigger. |
 
 ## Open questions
 
-1. **What happens to a `pending` commitment whose `scheduled_at` passes**
-   without ever being accepted? Under the expiry rule above it should already
-   have expired five hours earlier, so this ought to be unreachable — but it is
-   worth confirming the intent is that no such row can exist, rather than
-   leaving it undefined.
-2. **Can a buyer hold several commitments at the same moment**, with different
-   sellers? The rules above constrain sellers and listings but say nothing
-   about buyers, who equally cannot be in two places at once.
-3. **May a seller decline *and* be marked ignored?** Declining is an action and
-   expiry is an absence, so they should be exclusive — confirming no path
-   records both.
-4. **`market_settings_history`** — recommended so a past stake or reputation
-   score can be explained under the parameters in force at the time. Not built
-   unless approved.
+None outstanding. Every question raised against this model has been answered
+and folded in above.
