@@ -4,6 +4,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
+	import Field from '#lib/components/ui/Field.svelte';
 	import WalletBalance from '#lib/components/wallet/WalletBalance.svelte';
 	import type { PageProps } from './$types';
 
@@ -11,6 +12,14 @@
 	 * Wallet — `/wallet`.
 	 */
 	let { data, form }: PageProps = $props();
+
+	/**
+	 * Disables the button while a withdrawal is in flight. Not cosmetic: a
+	 * second submission while the first is unconfirmed is exactly the case the
+	 * function's idempotency key exists to absorb, and the honest fix is to stop
+	 * it happening rather than to rely on catching it.
+	 */
+	let withdrawing = $state(false);
 </script>
 
 <svelte:head>
@@ -56,10 +65,91 @@
 
 		<Panel>
 			<h2 class="title">Withdraw</h2>
+
+			{#if form?.withdrawal}
+				<div class="result">
+					<Alert tone="success">
+						Sent {form.withdrawal.sol.toFixed(4)} SOL.
+						<a href={form.withdrawal.explorer} rel="noreferrer noopener" target="_blank">
+							View on Solana Explorer
+						</a>
+					</Alert>
+				</div>
+			{/if}
+
 			<p class="body">
-				Sending SOL back out to another Solana address is not built yet. It is
-				the next piece of wallet work.
+				Available to send: <strong>{data.wallet.sol.toFixed(4)} SOL</strong>.
+				A small network fee comes out of your balance.
 			</p>
+
+			<form
+				method="POST"
+				action="?/withdraw"
+				use:enhance={() => {
+					withdrawing = true;
+					return async ({ update }) => {
+						/*
+						 * `update()` re-runs the load, so the balance shown is read
+						 * from Solana again rather than adjusted locally. The chain is
+						 * the only thing that knows what actually happened.
+						 */
+						await update();
+						withdrawing = false;
+					};
+				}}
+			>
+				<div class="fields">
+					<Field
+						id="destination"
+						label="Send to"
+						hint="A Solana address on {data.wallet.network}. Check it carefully — a transfer cannot be reversed."
+					>
+						{#snippet children({ id, describedBy, invalid })}
+							<input
+								{id}
+								name="destination"
+								type="text"
+								required
+								spellcheck="false"
+								autocomplete="off"
+								aria-describedby={describedBy}
+								aria-invalid={invalid}
+							/>
+						{/snippet}
+					</Field>
+
+					<Field id="amount" label="Amount (SOL)">
+						{#snippet children({ id, describedBy, invalid })}
+							<input
+								{id}
+								name="amount"
+								type="text"
+								inputmode="decimal"
+								placeholder="0.1"
+								aria-describedby={describedBy}
+								aria-invalid={invalid}
+							/>
+						{/snippet}
+					</Field>
+				</div>
+
+				<!--
+					Emptying the wallet is a separate choice rather than something the
+					user calculates. Solana will not leave an account holding a tiny
+					non-zero balance, so "everything" has to mean everything minus the
+					fee — arithmetic nobody should have to do by hand.
+				-->
+				<label class="all">
+					<input type="checkbox" name="all" />
+					<span>Send everything and empty the wallet</span>
+				</label>
+
+				<div class="actions">
+					<Button type="submit" disabled={withdrawing}>
+						{withdrawing ? 'Sending…' : 'Withdraw'}
+					</Button>
+				</div>
+			</form>
 		</Panel>
 	</div>
 {/if}
@@ -88,6 +178,33 @@
 	}
 
 	.action {
+		margin-top: var(--k-space-5);
+	}
+
+	.result {
+		margin: var(--k-space-3) 0;
+	}
+
+	.fields {
+		display: grid;
+		gap: var(--k-space-4);
+		margin-top: var(--k-space-4);
+	}
+
+	.all {
+		display: flex;
+		align-items: center;
+		gap: var(--k-space-2);
+		margin-top: var(--k-space-4);
+		font-size: var(--k-text-sm);
+		cursor: pointer;
+	}
+
+	.all input {
+		accent-color: var(--k-primary);
+	}
+
+	.actions {
 		margin-top: var(--k-space-5);
 	}
 </style>

@@ -192,49 +192,25 @@ export const actions: Actions = {
 	 * inferred from timestamps.
 	 */
 	cancel: async ({ locals, params, url }) => {
-		const { user, commitment, isBuyer } = await requireParty(
-			locals,
-			params.commitment_id,
-			url.pathname
-		);
-
-		if (commitment.status !== 'accepted') {
-			return fail(409, {
-				actionError: 'Only an accepted commitment can be cancelled.',
-				message: null,
-				needsFunds: false
-			});
-		}
-
-		const role: Party = isBuyer ? 'buyer' : 'seller';
-
-		const { error: updateError } = await locals.supabase
-			.from('commitments')
-			.update({
-				status: 'cancelled',
-				responsible_party: role,
-				cancelled_at: new Date().toISOString()
-			})
-			.eq('id', commitment.id)
-			.eq('status', 'accepted');
-
-		if (updateError) {
-			return fail(500, { actionError: 'The commitment could not be cancelled.', message: null, needsFunds: false });
-		}
-
-		await recordEvent(
-			locals,
-			commitment.id,
-			isBuyer ? 'buyer_cancelled' : 'seller_cancelled',
-			user.id,
-			role
-		);
+		requireUser(await locals.getVerifiedUser(), url.pathname);
 
 		/**
-		 * The listing returns to `active` automatically — the trigger on this
-		 * table does it, so a seller whose buyer cancelled at 2am does not wake
-		 * up to an item that silently stopped being visible.
+		 * Delegated to `cancel_commitment`, which forfeits the canceller's stake
+		 * and refunds the other participant. Nothing about the status is changed
+		 * here: the state and the settlements have to move together, and only the
+		 * function can do the second half.
 		 */
-		return ok('Cancelled. The listing is available again.');
+		const result = await invokeFunction<{
+			cancelled_by: 'buyer' | 'seller';
+			refunded: boolean;
+			forfeited: boolean;
+			message: string;
+		}>(locals.supabase, 'cancel_commitment', { commitment_id: params.commitment_id });
+
+		if (!result.ok) {
+			return fail(409, { actionError: result.error.message, message: null, needsFunds: false });
+		}
+
+		return ok(result.data.message);
 	}
 };
