@@ -55,6 +55,155 @@ export type Database = {
           },
         ]
       }
+      commitment_events: {
+        Row: {
+          actor_profile_id: string | null
+          actor_role: Database["public"]["Enums"]["commitment_party"] | null
+          commitment_id: string
+          event_type: Database["public"]["Enums"]["commitment_event_type"]
+          id: string
+          metadata: Json | null
+          occurred_at: string
+        }
+        Insert: {
+          actor_profile_id?: string | null
+          actor_role?: Database["public"]["Enums"]["commitment_party"] | null
+          commitment_id: string
+          event_type: Database["public"]["Enums"]["commitment_event_type"]
+          id?: string
+          metadata?: Json | null
+          occurred_at?: string
+        }
+        Update: {
+          actor_profile_id?: string | null
+          actor_role?: Database["public"]["Enums"]["commitment_party"] | null
+          commitment_id?: string
+          event_type?: Database["public"]["Enums"]["commitment_event_type"]
+          id?: string
+          metadata?: Json | null
+          occurred_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commitment_events_actor_profile_id_fkey"
+            columns: ["actor_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commitment_events_commitment_id_fkey"
+            columns: ["commitment_id"]
+            isOneToOne: false
+            referencedRelation: "commitments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      commitments: {
+        Row: {
+          accepted_at: string | null
+          buyer_checked_in_at: string | null
+          buyer_id: string
+          buyer_stake_cents: number
+          cancelled_at: string | null
+          check_in_window_ends_at: string | null
+          completed_at: string | null
+          created_at: string
+          declined_at: string | null
+          id: string
+          listing_id: string
+          meetup_location_id: string
+          meetup_verified_at: string | null
+          request_expires_at: string
+          responsible_party:
+            | Database["public"]["Enums"]["commitment_party"]
+            | null
+          scheduled_at: string
+          seller_checked_in_at: string | null
+          seller_id: string
+          seller_stake_cents: number
+          status: Database["public"]["Enums"]["commitment_status"]
+        }
+        Insert: {
+          accepted_at?: string | null
+          buyer_checked_in_at?: string | null
+          buyer_id: string
+          buyer_stake_cents: number
+          cancelled_at?: string | null
+          check_in_window_ends_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          declined_at?: string | null
+          id?: string
+          listing_id: string
+          meetup_location_id: string
+          meetup_verified_at?: string | null
+          request_expires_at?: string
+          responsible_party?:
+            | Database["public"]["Enums"]["commitment_party"]
+            | null
+          scheduled_at: string
+          seller_checked_in_at?: string | null
+          seller_id: string
+          seller_stake_cents: number
+          status?: Database["public"]["Enums"]["commitment_status"]
+        }
+        Update: {
+          accepted_at?: string | null
+          buyer_checked_in_at?: string | null
+          buyer_id?: string
+          buyer_stake_cents?: number
+          cancelled_at?: string | null
+          check_in_window_ends_at?: string | null
+          completed_at?: string | null
+          created_at?: string
+          declined_at?: string | null
+          id?: string
+          listing_id?: string
+          meetup_location_id?: string
+          meetup_verified_at?: string | null
+          request_expires_at?: string
+          responsible_party?:
+            | Database["public"]["Enums"]["commitment_party"]
+            | null
+          scheduled_at?: string
+          seller_checked_in_at?: string | null
+          seller_id?: string
+          seller_stake_cents?: number
+          status?: Database["public"]["Enums"]["commitment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commitments_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commitments_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commitments_meetup_location_id_fkey"
+            columns: ["meetup_location_id"]
+            isOneToOne: false
+            referencedRelation: "meetup_locations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commitments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       listing_availability_rules: {
         Row: {
           availability_rule_id: string
@@ -397,6 +546,32 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
+      commitment_event_type:
+        | "request_created"
+        | "seller_accepted"
+        | "seller_declined"
+        | "buyer_withdrew"
+        | "request_expired"
+        | "buyer_cancelled"
+        | "seller_cancelled"
+        | "buyer_checked_in"
+        | "seller_checked_in"
+        | "buyer_no_show"
+        | "seller_no_show"
+        | "meetup_verified"
+        | "commitment_stale"
+        | "commitment_completed"
+        | "purchase_completed"
+      commitment_party: "buyer" | "seller"
+      commitment_status:
+        | "pending"
+        | "accepted"
+        | "declined"
+        | "expired"
+        | "cancelled"
+        | "no_show"
+        | "stale"
+        | "completed"
       listing_condition: "new" | "used_like_new" | "used_good" | "used_fair"
       listing_status: "draft" | "active" | "reserved" | "sold" | "withdrawn"
     }
@@ -526,6 +701,34 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      commitment_event_type: [
+        "request_created",
+        "seller_accepted",
+        "seller_declined",
+        "buyer_withdrew",
+        "request_expired",
+        "buyer_cancelled",
+        "seller_cancelled",
+        "buyer_checked_in",
+        "seller_checked_in",
+        "buyer_no_show",
+        "seller_no_show",
+        "meetup_verified",
+        "commitment_stale",
+        "commitment_completed",
+        "purchase_completed",
+      ],
+      commitment_party: ["buyer", "seller"],
+      commitment_status: [
+        "pending",
+        "accepted",
+        "declined",
+        "expired",
+        "cancelled",
+        "no_show",
+        "stale",
+        "completed",
+      ],
       listing_condition: ["new", "used_like_new", "used_good", "used_fair"],
       listing_status: ["draft", "active", "reserved", "sold", "withdrawn"],
     },

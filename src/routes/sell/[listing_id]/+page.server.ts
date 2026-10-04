@@ -4,6 +4,7 @@ import { parsePriceToCents } from '#lib/format';
 import { requireUser } from '#lib/server/auth/guards';
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from '#lib/listings/images';
 import { CONDITION_ORDER, type ListingCondition } from '#lib/listings/labels';
+import { generateSlots } from '#lib/commitments/slots';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -87,13 +88,79 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		.eq('is_archived', false)
 		.order('day_of_week', { ascending: true });
 
+	/**
+	 * Everything needed to offer a commitment request. Skipped entirely for the
+	 * owner, who cannot commit to their own listing — the database forbids it
+	 * and there is no reason to pay for the queries.
+	 */
+	let slots: { startsAt: string; ruleId: string }[] = [];
+	let stakeCents: number | null = null;
+	let frozen = false;
+
+	if (!isOwner) {
+		const [settingsResult, takenResult] = await Promise.all([
+			locals.supabase
+				.from('market_settings')
+				.select('base_commitment_fee_cents, minimum_acceptance_lead_hours')
+				.eq('id', 1)
+				.single(),
+			/**
+			 * Moments this seller already has accepted commitments for. They are
+			 * removed from the list rather than offered and rejected: a database
+			 * error after someone has chosen a time is a worse experience than
+			 * never showing it.
+			 *
+			 * This is a courtesy, not the guarantee. The partial unique indexes
+			 * are what actually prevent a double booking, including between two
+			 * buyers who load the page at the same moment.
+			 */
+			locals.supabase
+				.from('commitments')
+				.select('scheduled_at')
+				.eq('seller_id', listing.seller_id)
+				.eq('status', 'accepted')
+		]);
+
+		const settings = settingsResult.data;
+
+		if (settings) {
+			stakeCents = settings.base_commitment_fee_cents;
+
+			slots = generateSlots(availability ?? [], {
+				/** The server's clock decides, never the browser's. */
+				now: new Date(),
+				minimumLeadHours: settings.minimum_acceptance_lead_hours,
+				taken: new Set((takenResult.data ?? []).map((row) => row.scheduled_at))
+			}).slice(0, 60);
+		}
+	} else {
+		/**
+		 * A listing with an accepted commitment is frozen: two people have
+		 * agreed to meet about this specific item at this specific price, and
+		 * changing it underneath them turns a reliable meetup into a bait and
+		 * switch. The database enforces it; this is so the form can explain it
+		 * rather than simply failing on save.
+		 */
+		const { count } = await locals.supabase
+			.from('commitments')
+			.select('id', { count: 'exact', head: true })
+			.eq('listing_id', listing.id)
+			.eq('status', 'accepted');
+
+		frozen = (count ?? 0) > 0;
+	}
+
 	return {
 		listing,
 		images: images ?? [],
 		locations: locations ?? [],
 		availability: availability ?? [],
 		isOwner,
-		conditions: CONDITION_ORDER
+		conditions: CONDITION_ORDER,
+		slots,
+		stakeCents,
+		frozen,
+		signedIn: user !== null
 	};
 };
 
@@ -132,6 +199,116 @@ const ok = (message: string) => ({
 });
 
 export const actions: Actions = {
+	/**
+	 * A buyer requests a meetup.
+	 *
+	 * This creates a commitment in `pending`. Nothing is locked and no money
+	 * moves: a request is an offer to meet, and it only becomes an obligation
+	 * when the seller accepts.
+	 *
+	 * NOT DONE HERE, deliberately — see the migration:
+	 *   * stake calculation. Both sides get the market baseline for now; the
+	 *     specification requires reputation-adjusted, asymmetric amounts, and
+	 *     that becomes a change to this one assignment.
+	 *   * wallet locking. Nothing is reserved until the wallet service exists.
+	 */
+	requestCommitment: async ({ request, locals, params, url }) => {
+		const user = requireUser(await locals.getVerifiedUser(), url.pathname);
+
+		const form = await request.formData();
+		const meetupLocationId = String(form.get('meetupLocationId') ?? '');
+		const scheduledAt = String(form.get('scheduledAt') ?? '');
+
+		if (!meetupLocationId || !scheduledAt) {
+			return fail(400, { requestError: 'Choose both a place and a time.' });
+		}
+
+		/**
+		 * The listing is re-read rather than trusted from the form. `seller_id`
+		 * comes from here, so a crafted submission cannot name someone else as
+		 * the seller, and the status check means a reserved or withdrawn item
+		 * cannot be committed to even if the page was loaded while it was live.
+		 */
+		const { data: listing } = await locals.supabase
+			.from('listings')
+			.select('id, seller_id, status')
+			.eq('id', params.listing_id)
+			.maybeSingle();
+
+		if (!listing || listing.status !== 'active') {
+			return fail(409, { requestError: 'This listing is no longer available.' });
+		}
+
+		if (listing.seller_id === user.id) {
+			return fail(400, { requestError: 'You cannot request a meetup for your own listing.' });
+		}
+
+		const { data: settings } = await locals.supabase
+			.from('market_settings')
+			.select('base_commitment_fee_cents')
+			.eq('id', 1)
+			.single();
+
+		const baseStake = settings?.base_commitment_fee_cents ?? 0;
+
+		const { data: commitment, error } = await locals.supabase
+			.from('commitments')
+			.insert({
+				listing_id: listing.id,
+				buyer_id: user.id,
+				seller_id: listing.seller_id,
+				meetup_location_id: meetupLocationId,
+				scheduled_at: scheduledAt,
+				/**
+				 * Equal today only because nothing calculates them yet. The two
+				 * columns exist so that reputation-adjusted stakes do not require
+				 * changing the table.
+				 */
+				buyer_stake_cents: baseStake,
+				seller_stake_cents: baseStake
+			})
+			.select('id')
+			.single();
+
+		if (error) {
+			/**
+			 * The database enforces several rules this action cannot usefully
+			 * re-check without a race. Each is translated rather than shown raw,
+			 * because a constraint name means nothing to the person reading it.
+			 */
+			if (error.code === '23505') {
+				return fail(409, {
+					requestError:
+						'That time has just been taken, or you already have a request open on this listing.'
+				});
+			}
+
+			if (error.message.includes('hours away')) {
+				return fail(400, {
+					requestError:
+						'That meetup is too soon. Pick a time far enough ahead for the seller to respond.'
+				});
+			}
+
+			return fail(500, { requestError: 'The request could not be sent. Please try again.' });
+		}
+
+		/**
+		 * The event log is what reputation will eventually be built from — the
+		 * path, not just the final status. Written alongside the commitment
+		 * rather than inferred later, because "who did what, as which role, and
+		 * when" cannot be reconstructed from a status column.
+		 */
+		await locals.supabase.from('commitment_events').insert({
+			commitment_id: commitment.id,
+			event_type: 'request_created',
+			actor_profile_id: user.id,
+			actor_role: 'buyer'
+		});
+
+		redirect(303, `/commitment/${commitment.id}`);
+	},
+
 	/** Edit the item's details. */
 	updateDetails: async ({ request, locals, params, url }) => {
 		await requireOwnedListing(locals, params.listing_id, url.pathname);

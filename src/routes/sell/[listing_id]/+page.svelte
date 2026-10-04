@@ -3,11 +3,11 @@
 	import Alert from '#lib/components/ui/Alert.svelte';
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
-	import Field from '#lib/components/ui/Field.svelte';
 	import ImageUploader from '#lib/components/listings/ImageUploader.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import { formatPrice, formatTimeOfDay } from '#lib/format';
+	import Field from '#lib/components/ui/Field.svelte';
 	import { listingImageUrl } from '#lib/listings/images';
 	import {
 		CONDITION_LABELS,
@@ -41,6 +41,21 @@
 
 	/** The edit field expects plain decimal text, not a formatted currency. */
 	const priceForInput = $derived((data.listing.price_cents / 100).toFixed(2));
+
+	/**
+	 * A slot instant, shown in the VIEWER's timezone rather than the seller's.
+	 * Both sides are looking at the same moment; each should see it in the
+	 * clock they actually live by.
+	 */
+	function formatSlot(iso: string): string {
+		return new Intl.DateTimeFormat('en-CA', {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit'
+		}).format(new Date(iso));
+	}
 </script>
 
 <svelte:head>
@@ -105,6 +120,29 @@
 			<Panel>
 				<h2 class="panel-title">Details</h2>
 
+				{#if data.frozen}
+					<!--
+						A listing with an accepted commitment cannot be edited. Two
+						people have agreed to meet about this specific item at this
+						specific price, and changing it underneath them turns a
+						reliable meetup into a bait and switch.
+
+						The database enforces this; the form is disabled so the rule is
+						explained before someone types, rather than after they save.
+					-->
+					<div class="frozen">
+						<Alert tone="info">
+							<strong>Locked while committed.</strong>
+							<p>
+								Someone has an accepted commitment to meet about this item, so
+								its details cannot change. It unlocks automatically if that
+								commitment is cancelled or expires.
+							</p>
+						</Alert>
+					</div>
+				{/if}
+
+				<fieldset class="bare" disabled={data.frozen}>
 				<form
 					method="POST"
 					action="?/updateDetails"
@@ -179,11 +217,12 @@
 					</div>
 
 					<div class="form-actions">
-						<Button type="submit" disabled={saving}>
+						<Button type="submit" disabled={saving || data.frozen}>
 							{saving ? 'Saving…' : 'Save changes'}
 						</Button>
 					</div>
 				</form>
+				</fieldset>
 			</Panel>
 		{/if}
 	</div>
@@ -208,18 +247,64 @@
 
 			{#if !data.isOwner}
 				<div class="commit">
-					<!--
-						Present but inert. The commitment flow is not built: no stake is
-						calculated, nothing is locked, and no row is written. Rendering it
-						disabled rather than hiding it shows where the flow goes without
-						pretending it works.
-					-->
-					<Button disabled>Request a commitment</Button>
-					<p class="commit-note">
-						Not available yet. When it is, you will pick a time and place from
-						the seller's options below, and both of you will put down a
-						refundable stake.
-					</p>
+					{#if !data.signedIn}
+						<Button href="/signin?redirectTo=/sell/{data.listing.id}">Sign in to request</Button>
+						<p class="commit-note">You need an account to commit to a meetup.</p>
+					{:else if data.slots.length === 0}
+						<p class="commit-note">
+							This seller has not set any availability yet, so there is nothing
+							to request.
+						</p>
+					{:else}
+						{#if form?.requestError}
+							<div class="commit-error">
+								<Alert tone="error">{form.requestError}</Alert>
+							</div>
+						{/if}
+
+						<form method="POST" action="?/requestCommitment" use:enhance>
+							<div class="commit-fields">
+								<Field id="meetupLocationId" label="Where">
+									{#snippet children({ id, describedBy, invalid })}
+										<select {id} name="meetupLocationId" required aria-describedby={describedBy} aria-invalid={invalid}>
+											{#each data.locations as location (location.id)}
+												<option value={location.id}>{location.name}</option>
+											{/each}
+										</select>
+									{/snippet}
+								</Field>
+
+								<Field id="scheduledAt" label="When">
+									{#snippet children({ id, describedBy, invalid })}
+										<select {id} name="scheduledAt" required aria-describedby={describedBy} aria-invalid={invalid}>
+											{#each data.slots as slot (slot.startsAt)}
+												<!--
+													Rendered in the viewer's own timezone. The value is
+													the exact instant, so a buyer in another zone sees
+													their local time while both sides mean the same
+													moment.
+												-->
+												<option value={slot.startsAt}>{formatSlot(slot.startsAt)}</option>
+											{/each}
+										</select>
+									{/snippet}
+								</Field>
+							</div>
+
+							<div class="commit-action">
+								<Button type="submit">Request a commitment</Button>
+							</div>
+						</form>
+
+						{#if data.stakeCents !== null}
+							<p class="commit-note">
+								If the seller accepts, you each put down
+								<strong>{formatPrice(data.stakeCents)}</strong>, refunded when
+								you both show up. It is a commitment to <em>meet</em>, not to
+								buy — you can inspect the item and walk away.
+							</p>
+						{/if}
+					{/if}
 				</div>
 			{/if}
 		</Panel>
@@ -408,6 +493,19 @@
 		font-size: var(--k-text-sm);
 	}
 
+	.commit-error {
+		margin-bottom: var(--k-space-3);
+	}
+
+	.commit-fields {
+		display: grid;
+		gap: var(--k-space-4);
+	}
+
+	.commit-action {
+		margin-top: var(--k-space-4);
+	}
+
 	.status-note {
 		color: var(--k-text-muted);
 		font-size: var(--k-text-sm);
@@ -439,5 +537,18 @@
 
 	.form-actions {
 		margin-top: var(--k-space-5);
+	}
+
+	.frozen {
+		margin-bottom: var(--k-space-4);
+	}
+
+	/* A fieldset is used purely for its `disabled` behaviour, which cascades to
+	   every control inside it. Its own chrome is removed. */
+	.bare {
+		margin: 0;
+		padding: 0;
+		border: 0;
+		min-width: 0;
 	}
 </style>

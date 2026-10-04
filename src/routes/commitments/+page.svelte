@@ -1,17 +1,133 @@
 <script lang="ts">
+	import Alert from '#lib/components/ui/Alert.svelte';
+	import Badge from '#lib/components/ui/Badge.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Panel from '#lib/components/ui/Panel.svelte';
+	import { formatPrice } from '#lib/format';
+	import { COMMITMENT_STATUS_LABELS, statusTone } from '#lib/commitments/labels';
+	import type { PageProps } from './$types';
 
 	/**
 	 * Commitments — `/commitments`.
-	 *
-	 * Intentionally empty. The route exists so that navigation, the layout and
-	 * the page title are in place; its content is built in its own change,
-	 * alongside the services and queries it needs.
 	 */
+	let { data }: PageProps = $props();
+
+	/** Shown in the viewer's own timezone — both parties mean the same instant. */
+	function when(iso: string): string {
+		return new Intl.DateTimeFormat('en-CA', {
+			weekday: 'short',
+			month: 'short',
+			day: 'numeric',
+			hour: 'numeric',
+			minute: '2-digit'
+		}).format(new Date(iso));
+	}
 </script>
 
 <svelte:head>
 	<title>Commitments · kommitly</title>
 </svelte:head>
 
-<PageHeader title="Commitments" />
+<PageHeader
+	title="Commitments"
+	description="Meetups you have agreed to, as a buyer and as a seller."
+/>
+
+{#if data.loadError}
+	<Alert tone="error">{data.loadError}</Alert>
+{:else if data.commitments.length === 0}
+	<Panel>
+		<p class="empty">
+			Nothing yet. Find something in <a href="/discover">Discover</a> and request
+			a meetup — the seller accepts, you both put down a refundable stake, and you
+			both show up.
+		</p>
+	</Panel>
+{:else}
+	<ul class="list" role="list">
+		{#each data.commitments as commitment (commitment.id)}
+			{@const isBuyer = commitment.buyer_id === data.user.id}
+			<li>
+				<Panel>
+					<div class="row">
+						<div class="body">
+							<div class="heading">
+								<!--
+									The role is stated plainly. The same person is a buyer in
+									one commitment and a seller in another, so a list without
+									it is genuinely ambiguous.
+								-->
+								<Badge tone="muted">{isBuyer ? 'Buying' : 'Selling'}</Badge>
+								<Badge tone={statusTone(commitment.status)}>
+									{COMMITMENT_STATUS_LABELS[commitment.status]}
+								</Badge>
+							</div>
+
+							<h2 class="title">{commitment.listings?.title ?? 'Listing removed'}</h2>
+
+							<p class="detail">
+								{when(commitment.scheduled_at)}
+								{#if commitment.meetup_locations?.name}
+									· {commitment.meetup_locations.name}
+								{/if}
+							</p>
+
+							<p class="detail">
+								Your stake
+								{formatPrice(isBuyer ? commitment.buyer_stake_cents : commitment.seller_stake_cents)}
+								{#if commitment.status === 'pending'}
+									· not taken until the seller accepts
+								{/if}
+							</p>
+						</div>
+
+						<Button href="/commitment/{commitment.id}" variant="secondary" size="sm">View</Button>
+					</div>
+				</Panel>
+			</li>
+		{/each}
+	</ul>
+{/if}
+
+<style>
+	.list {
+		display: grid;
+		gap: var(--k-space-3);
+		margin: 0;
+	}
+
+	.row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		justify-content: space-between;
+		gap: var(--k-space-4);
+	}
+
+	.body {
+		min-width: 0;
+	}
+
+	.heading {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--k-space-2);
+		margin-bottom: var(--k-space-2);
+	}
+
+	.title {
+		font-size: var(--k-text-lg);
+		overflow-wrap: anywhere;
+	}
+
+	.detail {
+		margin-top: var(--k-space-1);
+		color: var(--k-text-muted);
+		font-size: var(--k-text-sm);
+	}
+
+	.empty {
+		color: var(--k-text-muted);
+	}
+</style>
