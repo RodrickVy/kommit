@@ -107,9 +107,10 @@ Deno.serve(async (request: Request) => {
 		}
 
 		/** Verification, like check-in, belongs to the meetup's own day. */
-		if (Date.now() >= meetupDay(commitment.scheduled_at).end.getTime()) {
-			return fail('WINDOW_CLOSED', 'The day of this meetup has passed.', 409);
-		}
+		// TESTING: verification allowed on any day. Uncomment to require the meetup date.
+		// if (Date.now() >= meetupDay(commitment.scheduled_at).end.getTime()) {
+			// return fail('WINDOW_CLOSED', 'The day of this meetup has passed.', 409);
+		// }
 
 		const validation = await validateQrToken(db, {
 			commitmentId: commitment.id,

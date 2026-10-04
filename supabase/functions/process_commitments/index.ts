@@ -434,7 +434,10 @@ Deno.serve(async (request: Request) => {
 		 * but it would make a run's output impossible to read.
 		 */
 		const expired = await resolveExpiredRequests(db);
-		const overdue = await resolveOverdueCommitments(db);
+		// TESTING: past meetups are not auto-resolved to no-show / stale, so a
+		// test commitment on the "wrong" day stays open. Uncomment to restore.
+		// const overdue = await resolveOverdueCommitments(db);
+		const overdue: Outcome[] = [];
 		const reconciled = await reconcileSettlements(db);
 
 		/** Listings whose post-meetup purchase window lapsed without payment. */

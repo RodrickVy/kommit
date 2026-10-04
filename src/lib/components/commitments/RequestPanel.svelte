@@ -38,6 +38,16 @@
 	}: Props = $props();
 
 	let requesting = $state(false);
+
+	/**
+	 * TESTING: free date-and-time choice. Defaults to an hour from now, in the
+	 * browser's local time, which is what a datetime-local input expects.
+	 */
+	const inAnHour = new Date(Date.now() + 3600_000);
+	let localWhen = $state(
+		new Date(inAnHour.getTime() - inAnHour.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+	);
+	const scheduledAtIso = $derived(localWhen ? new Date(localWhen).toISOString() : '');
 	let requestError = $state<string | null>(null);
 	let needsFunds = $state(false);
 
@@ -48,10 +58,12 @@
 		if (status !== 'active') return 'This item is not available right now.';
 		if (!signedIn) return null;
 		if (locations.length === 0) return 'This seller has not added a meetup location yet.';
-		if (!hasAvailability) return 'This seller has not added any times they can meet yet.';
-		if (slots.length === 0) {
-			return `None of this seller's times are available right now. A meetup has to be at least ${minimumLeadHours ?? 5} hours away.`;
-		}
+		// TESTING: any date and time can be requested, so the seller's own times
+		// are not required. Uncomment to restore.
+		// if (!hasAvailability) return 'This seller has not added any times they can meet yet.';
+		// if (slots.length === 0) {
+		// 	return `None of this seller's times are available right now. A meetup has to be at least ${minimumLeadHours ?? 5} hours away.`;
+		// }
 		return null;
 	});
 
@@ -80,6 +92,10 @@
 		}
 		return grouped;
 	});
+
+	// TESTING: still needed once the slot picker is restored; referenced so the
+	// type checker does not flag them while it is commented out.
+	void (() => [hasAvailability, minimumLeadHours, slotTime, days]);
 </script>
 
 {#if blocked}
@@ -134,9 +150,29 @@
 				{/snippet}
 			</Field>
 
+			<!--
+				TESTING: any date and time, not just the seller's availability.
+				The browser's local time is converted to an exact instant on submit.
+				To restore, delete this field and uncomment the slot picker below.
+			-->
+			<Field id="scheduledAtLocal-{listingId}" label="When">
+				{#snippet children({ id, describedBy, invalid })}
+					<input
+						{id}
+						type="datetime-local"
+						required
+						bind:value={localWhen}
+						aria-describedby={describedBy}
+						aria-invalid={invalid}
+					/>
+				{/snippet}
+			</Field>
+			<input type="hidden" name="scheduledAt" value={scheduledAtIso} />
+
+			<!-- TESTING: slot picker disabled.
 			<Field id="scheduledAt-{listingId}" label="When">
 				{#snippet children({ id, describedBy, invalid })}
-					<!-- Shown in the viewer's timezone; the value is the exact instant. -->
+					(shown in the viewer's timezone; the value is the exact instant)
 					<select {id} name="scheduledAt" required aria-describedby={describedBy} aria-invalid={invalid}>
 						{#each days as day (day.label)}
 							<optgroup label={day.label}>
@@ -148,6 +184,7 @@
 					</select>
 				{/snippet}
 			</Field>
+			-->
 		</div>
 
 		<div class="action">
@@ -186,7 +223,8 @@
 		gap: var(--k-space-4);
 	}
 
-	.fields :global(select) {
+	.fields :global(select),
+	.fields :global(input) {
 		width: 100%;
 	}
 

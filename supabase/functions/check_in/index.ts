@@ -181,19 +181,20 @@ async function record(
 	 * on the agreed date. Before or after that day, it is refused.
 	 */
 	const day = meetupDay(commitment.scheduled_at);
-	const now = new Date();
+	// const now = new Date();
 
-	if (now < day.start) {
-		return fail('NOT_YET_OPEN', 'Check-in opens on the day of the meetup.', 409, {
-			opens_at: day.start.toISOString()
-		});
-	}
+	// TESTING: check-in allowed on any day. Uncomment to require the meetup date.
+	// if (now < day.start) {
+		// return fail('NOT_YET_OPEN', 'Check-in opens on the day of the meetup.', 409, {
+			// opens_at: day.start.toISOString()
+		// });
+	// }
 
-	if (now >= day.end) {
-		return fail('WINDOW_CLOSED', 'The day of this meetup has passed, so check-in is closed.', 409, {
-			closed_at: day.end.toISOString()
-		});
-	}
+	// if (now >= day.end) {
+		// return fail('WINDOW_CLOSED', 'The day of this meetup has passed, so check-in is closed.', 409, {
+			// closed_at: day.end.toISOString()
+		// });
+	// }
 
 	const validation = validateCheckIn(
 		submitted,

@@ -106,9 +106,10 @@ Deno.serve(async (request: Request) => {
 		}
 
 		/** Buying happens at the meetup, on its day — not days later. */
-		if (Date.now() >= meetupDay(commitment.scheduled_at).end.getTime()) {
-			return fail('WINDOW_CLOSED', 'The day of this meetup has passed, so it can no longer be paid for here.', 409);
-		}
+		// TESTING: payment allowed on any day. Uncomment to require the meetup date.
+		// if (Date.now() >= meetupDay(commitment.scheduled_at).end.getTime()) {
+			// return fail('WINDOW_CLOSED', 'The day of this meetup has passed, so it can no longer be paid for here.', 409);
+		// }
 
 		if (!commitment.listings || !PURCHASABLE.has(commitment.listings.status)) {
 			return fail(
