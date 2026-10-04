@@ -17,14 +17,14 @@
 		 * One sentence saying what the page is for. Optional, but worth
 		 * writing: it is the only orientation a first-time visitor gets.
 		 */
-		description?: string;
+		description?: string | undefined;
 
 		/**
 		 * Page-level actions, such as a "New listing" button. Rendered at the
 		 * end of the heading row on wide viewports and below the text on
 		 * narrow ones.
 		 */
-		actions?: Snippet;
+		actions?: Snippet | undefined;
 	}
 
 	let { title, description, actions }: Props = $props();

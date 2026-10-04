@@ -83,6 +83,19 @@
 				-->
 				<span class="identity">{user.email ?? 'Signed in'}</span>
 				<Button href="/account" variant="secondary" size="sm">Account</Button>
+
+				<!--
+					A POST, not a link. A GET that changes state can be triggered by
+					anything that prefetches a URL — the browser's own preloading
+					included — and SvelteKit's CSRF origin check only covers form
+					submissions.
+
+					`action` is absolute so this works from any page, not only from
+					/account where the handler lives.
+				-->
+				<form method="POST" action="/account?/signout">
+					<Button type="submit" variant="quiet" size="sm">Sign out</Button>
+				</form>
 			{:else}
 				<Button href="/signin" variant="quiet" size="sm">Sign in</Button>
 				<Button href="/join" variant="primary" size="sm">Join</Button>

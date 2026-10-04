@@ -31,7 +31,7 @@
 		 * Destination. Supplying it makes this an `<a>`; omitting it makes it
 		 * a `<button>`.
 		 */
-		href?: string;
+		href?: string | undefined;
 
 		/**
 		 * Submit behaviour, for the `<button>` form only.
