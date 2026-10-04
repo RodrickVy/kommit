@@ -4,6 +4,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
+	import RefreshButton from '#lib/components/wallet/RefreshButton.svelte';
 	import { formatPrice, formatSol } from '#lib/format';
 	import type { PageProps } from './$types';
 
@@ -27,7 +28,11 @@
 </svelte:head>
 
 <div class="narrow">
-	<PageHeader title="Buy this item" />
+	<PageHeader title="Buy this item">
+		{#snippet actions()}
+			<RefreshButton label="Refresh balance" />
+		{/snippet}
+	</PageHeader>
 
 	{#if form?.actionError}
 		<div class="banner">

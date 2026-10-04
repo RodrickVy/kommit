@@ -6,6 +6,7 @@
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import CheckInButton from '#lib/components/commitments/CheckInButton.svelte';
+	import CheckInMap from '#lib/components/commitments/CheckInMap.svelte';
 	import QrDisplay from '#lib/components/commitments/QrDisplay.svelte';
 	import { formatPrice, formatSol } from '#lib/format';
 	import { COMMITMENT_STATUS_LABELS, EVENT_LABELS, statusTone } from '#lib/commitments/labels';
@@ -199,6 +200,14 @@
 				{/if}
 
 				{#if !iCheckedIn}
+					{#if c.meetup_locations && data.settings}
+						<CheckInMap
+							latitude={c.meetup_locations.latitude}
+							longitude={c.meetup_locations.longitude}
+							radiusMetres={data.settings.check_in_radius_metres}
+							name={c.meetup_locations.name}
+						/>
+					{/if}
 					<div class="actions">
 						<CheckInButton action="?/checkIn" />
 					</div>

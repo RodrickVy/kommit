@@ -32,7 +32,11 @@
 {:else}
 	<div class="grid">
 		{#each data.listings as listing (listing.id)}
-			<ListingCard {listing} imagePath={listing.listing_images[0]?.storage_path ?? null} />
+			<ListingCard
+				{listing}
+				imagePath={listing.listing_images[0]?.storage_path ?? null}
+				showRequest
+			/>
 		{/each}
 	</div>
 

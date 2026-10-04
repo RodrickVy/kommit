@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Badge from '#lib/components/ui/Badge.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
 	import { formatPrice } from '#lib/format';
 	import { CONDITION_LABELS, STATUS_LABELS, type ListingCondition, type ListingStatus } from '#lib/listings/labels';
 	import { listingImageUrl } from '#lib/listings/images';
@@ -25,9 +26,12 @@
 
 		/** Show the status badge. On for the seller's own listings. */
 		showStatus?: boolean;
+
+		/** Show the "Request a meetup" button. On in Discover. */
+		showRequest?: boolean;
 	}
 
-	let { listing, imagePath = null, showStatus = false }: Props = $props();
+	let { listing, imagePath = null, showStatus = false, showRequest = false }: Props = $props();
 
 	const statusTone = $derived(
 		listing.status === 'active'
@@ -40,7 +44,8 @@
 	);
 </script>
 
-<a class="card k-cut k-outline" href="/sell/{listing.id}">
+<article class="card k-cut k-outline">
+<a class="link" href="/sell/{listing.id}">
 	<div class="media">
 		{#if imagePath}
 			<!--
@@ -70,14 +75,33 @@
 	</div>
 </a>
 
+{#if showRequest}
+	<!-- A sibling of the card link, not inside it: a link cannot hold a link. -->
+	<div class="request">
+		<Button href="/sell/{listing.id}#request" size="sm">Request a meetup</Button>
+	</div>
+{/if}
+</article>
+
 <style>
 	.card {
 		display: flex;
 		flex-direction: column;
 		background-color: var(--k-surface);
+		transition: background-color var(--k-duration-fast) var(--k-ease);
+	}
+
+	.link {
+		display: flex;
+		flex: 1;
+		flex-direction: column;
 		color: inherit;
 		text-decoration: none;
-		transition: background-color var(--k-duration-fast) var(--k-ease);
+	}
+
+	.request {
+		display: grid;
+		padding: 0 var(--k-space-4) var(--k-space-4);
 	}
 
 	.card:hover {

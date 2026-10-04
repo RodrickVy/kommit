@@ -17,16 +17,34 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	 * withdrawn items, which is the whole point of this page as opposed to
 	 * Discover. The RLS policy already permits exactly this and nothing more.
 	 */
-	const { data, error } = await locals.supabase
-		.from('listings')
-		.select('id, title, price_cents, condition, status, created_at, listing_images(storage_path)')
-		.eq('seller_id', user.id)
-		.eq('listing_images.position', 0)
-		.order('created_at', { ascending: false });
+	const [{ data, error }, locations, availability] = await Promise.all([
+		locals.supabase
+			.from('listings')
+			.select('id, title, price_cents, condition, status, created_at, listing_images(storage_path)')
+			.eq('seller_id', user.id)
+			.eq('listing_images.position', 0)
+			.order('created_at', { ascending: false }),
+		/** Counts only — buyers cannot request a meetup until both exist. */
+		locals.supabase
+			.from('meetup_locations')
+			.select('id', { count: 'exact', head: true })
+			.eq('profile_id', user.id)
+			.eq('is_archived', false),
+		locals.supabase
+			.from('availability_rules')
+			.select('id', { count: 'exact', head: true })
+			.eq('profile_id', user.id)
+			.eq('is_archived', false)
+	]);
+
+	const setup = {
+		hasLocations: (locations.count ?? 0) > 0,
+		hasAvailability: (availability.count ?? 0) > 0
+	};
 
 	if (error) {
-		return { listings: [], loadError: 'Your listings could not be loaded.' };
+		return { listings: [], setup, loadError: 'Your listings could not be loaded.' };
 	}
 
-	return { listings: data, loadError: null };
+	return { listings: data, setup, loadError: null };
 };

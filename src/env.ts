@@ -173,6 +173,18 @@ export const variables = defineEnvVars({
 			'webhooks, scheduled jobs, administrative repair.'
 	},
 
+	// -- Maps ---------------------------------------------------------------
+
+	PUBLIC_MAPBOX_TOKEN: {
+		public: true,
+		schema: optional,
+		description:
+			'Mapbox public access token (starts `pk.`) for the check-in map.\n\n' +
+			'Public by design — Mapbox public tokens are meant for the browser.\n' +
+			'Restrict it to your domains in the Mapbox dashboard. Optional: the\n' +
+			'map is simply hidden without it; check-in itself still works.'
+	},
+
 	// -- Storage ------------------------------------------------------------
 
 	PUBLIC_SUPABASE_LISTINGS_BUCKET: {

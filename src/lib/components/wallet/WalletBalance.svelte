@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Panel from '#lib/components/ui/Panel.svelte';
+	import RefreshButton from '#lib/components/wallet/RefreshButton.svelte';
 	import type { WalletState } from '#lib/server/functions/invoke';
 
 	/**
@@ -37,7 +38,10 @@
 </script>
 
 <Panel>
-	<h2 class="title">Balance</h2>
+	<div class="head">
+		<h2 class="title">Balance</h2>
+		<RefreshButton />
+	</div>
 
 	<p class="amount">
 		{sol}
@@ -70,6 +74,13 @@
 </Panel>
 
 <style>
+	.head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--k-space-2);
+	}
+
 	.title {
 		font-size: var(--k-text-lg);
 	}

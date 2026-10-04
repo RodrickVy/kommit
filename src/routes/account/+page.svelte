@@ -17,6 +17,34 @@
 	 * inherits: where this person will meet, and when they are free.
 	 */
 	let { data, form }: PageProps = $props();
+
+	let latitude = $state('');
+	let longitude = $state('');
+	let locating = $state(false);
+	let locateError = $state<string | null>(null);
+
+	function useMyLocation() {
+		if (!('geolocation' in navigator)) {
+			locateError = 'This browser cannot share its location. Enter the coordinates instead.';
+			return;
+		}
+
+		locating = true;
+		locateError = null;
+
+		navigator.geolocation.getCurrentPosition(
+			(position) => {
+				latitude = position.coords.latitude.toFixed(6);
+				longitude = position.coords.longitude.toFixed(6);
+				locating = false;
+			},
+			() => {
+				locateError = 'Your location could not be read. Enter the coordinates instead.';
+				locating = false;
+			},
+			{ enableHighAccuracy: true, timeout: 10000 }
+		);
+	}
 </script>
 
 <svelte:head>
@@ -98,7 +126,7 @@
 		</Panel>
 	</div>
 
-	<section class="section">
+	<section class="section" id="meetup-setup">
 		<Panel>
 			<div class="section-head">
 				<div>
@@ -119,9 +147,14 @@
 						<li class="row">
 							<div class="row-body">
 								<span class="row-title">{location.name}</span>
-								<span class="row-detail">
-									{location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
-								</span>
+								<a
+									class="row-detail"
+									href="https://www.openstreetmap.org/?mlat={location.latitude}&mlon={location.longitude}#map=18/{location.latitude}/{location.longitude}"
+									target="_blank"
+									rel="noopener noreferrer"
+								>
+									{location.latitude.toFixed(4)}, {location.longitude.toFixed(4)} · View on map
+								</a>
 							</div>
 							<form method="POST" action="?/removeLocation" use:enhance>
 								<input type="hidden" name="locationId" value={location.id} />
@@ -161,6 +194,7 @@
 								inputmode="decimal"
 								required
 								placeholder="49.2796"
+								bind:value={latitude}
 								aria-describedby={describedBy}
 								aria-invalid={invalid}
 							/>
@@ -176,11 +210,25 @@
 								inputmode="decimal"
 								required
 								placeholder="-123.1156"
+								bind:value={longitude}
 								aria-describedby={describedBy}
 								aria-invalid={invalid}
 							/>
 						{/snippet}
 					</Field>
+				</div>
+
+				<!--
+					The device's own position, so a seller standing at the spot can save
+					it exactly. Typing coordinates still works where this is refused.
+				-->
+				<div class="locate">
+					<Button type="button" variant="quiet" size="sm" onclick={useMyLocation} disabled={locating}>
+						{locating ? 'Locating…' : 'Use my current location'}
+					</Button>
+					{#if locateError}
+						<span class="muted">{locateError}</span>
+					{/if}
 				</div>
 
 				<Button type="submit" variant="secondary">Add location</Button>
@@ -409,6 +457,21 @@
 		gap: var(--k-space-4);
 		width: 100%;
 		max-width: 32rem;
+	}
+
+	.locate {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--k-space-2);
+	}
+
+	a.row-detail {
+		text-decoration: none;
+	}
+
+	a.row-detail:hover {
+		color: var(--k-text);
 	}
 
 	.signout {

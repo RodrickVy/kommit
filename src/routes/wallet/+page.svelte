@@ -5,6 +5,7 @@
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import Field from '#lib/components/ui/Field.svelte';
+	import RefreshButton from '#lib/components/wallet/RefreshButton.svelte';
 	import WalletBalance from '#lib/components/wallet/WalletBalance.svelte';
 	import type { PageProps } from './$types';
 
@@ -30,6 +31,8 @@
 	{#snippet actions()}
 		{#if data.wallet}
 			<Button href="/wallet/fund_wallet">Add funds</Button>
+		{:else}
+			<RefreshButton />
 		{/if}
 	{/snippet}
 </PageHeader>

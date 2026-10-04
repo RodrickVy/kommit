@@ -28,6 +28,7 @@
 	let { data, form }: PageProps = $props();
 
 	let saving = $state(false);
+	let requesting = $state(false);
 
 	const statusTone = $derived(
 		data.listing.status === 'active'
@@ -246,14 +247,21 @@
 			</dl>
 
 			{#if !data.isOwner}
-				<div class="commit">
-					{#if !data.signedIn}
+				<div class="commit" id="request">
+					{#if data.listing.status !== 'active'}
+						<p class="commit-note">
+							{data.listing.status === 'reserved'
+								? 'Someone already has a meetup booked for this item.'
+								: 'This item is not available right now.'}
+						</p>
+					{:else if !data.signedIn}
 						<Button href="/signin?redirectTo=/sell/{data.listing.id}">Sign in to request</Button>
 						<p class="commit-note">You need an account to commit to a meetup.</p>
-					{:else if data.slots.length === 0}
+					{:else if data.locations.length === 0 || data.slots.length === 0}
 						<p class="commit-note">
-							This seller has not set any availability yet, so there is nothing
-							to request.
+							This seller has not set up
+							{data.locations.length === 0 ? 'meetup locations' : 'availability'} yet,
+							so there is nothing to request.
 						</p>
 					{:else}
 						{#if form?.requestError}
@@ -275,7 +283,17 @@
 							</div>
 						{/if}
 
-						<form method="POST" action="?/requestCommitment" use:enhance>
+						<form
+							method="POST"
+							action="?/requestCommitment"
+							use:enhance={() => {
+								requesting = true;
+								return async ({ update }) => {
+									await update();
+									requesting = false;
+								};
+							}}
+						>
 							<div class="commit-fields">
 								<Field id="meetupLocationId" label="Where">
 									{#snippet children({ id, describedBy, invalid })}
@@ -305,16 +323,18 @@
 							</div>
 
 							<div class="commit-action">
-								<Button type="submit">Request a commitment</Button>
+								<Button type="submit" disabled={requesting}>
+									{requesting ? 'Requesting…' : 'Request a meetup'}
+								</Button>
 							</div>
 						</form>
 
 						{#if data.stakeCents !== null}
 							<p class="commit-note">
-								If the seller accepts, you each put down
-								<strong>{formatPrice(data.stakeCents)}</strong>, refunded when
-								you both show up. It is a commitment to <em>meet</em>, not to
-								buy — you can inspect the item and walk away.
+								Requesting puts down a <strong>{formatPrice(data.stakeCents)}</strong>
+								commitment. The seller puts down the same when they accept, and you
+								both get it back when you meet. It is a commitment to <em>meet</em>,
+								not to buy — you can inspect the item and walk away.
 							</p>
 						{/if}
 					{/if}
@@ -498,6 +518,7 @@
 
 	.commit {
 		margin-top: var(--k-space-5);
+		scroll-margin-top: calc(var(--k-header-h) + var(--k-space-4));
 	}
 
 	.commit-note {

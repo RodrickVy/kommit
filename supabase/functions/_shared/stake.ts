@@ -16,10 +16,9 @@ export type Party = 'buyer' | 'seller';
  * buyer the figure before they commit and the seller's request screen can show
  * theirs before they accept.
  *
- * THE REPUTATION ADJUSTMENT IS NOT IMPLEMENTED, deliberately. The contracts
- * require market baseline plus an individual reputation offset, and explicitly
- * leave the formula as a separate product decision. Until it exists, every
- * participant is quoted the market baseline.
+ * Reputation does not adjust the stake for now: it is a flat $2.00 CAD for
+ * every participant, set in `market_settings` (base, floor and ceiling all
+ * 200 cents).
  *
  * The signature already takes the profile and the role, so introducing the
  * formula is a change inside this function and nowhere else — and because the

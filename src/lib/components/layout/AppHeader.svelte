@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { afterNavigate } from '$app/navigation';
 	import { page } from '$app/state';
 	import Button from '#lib/components/ui/Button.svelte';
 	import BrandMark from '#lib/components/layout/BrandMark.svelte';
@@ -40,7 +41,20 @@
 	 * guarded server-side. See the warning on `NavVisibility`.
 	 */
 	const items = $derived(visibleNavItems(PRIMARY_NAV, user !== null, isAdmin));
+
+	/** Mobile drawer state. Desktop never shows the toggle. */
+	let menuOpen = $state(false);
+
+	afterNavigate(() => {
+		menuOpen = false;
+	});
 </script>
+
+<svelte:window
+	onkeydown={(event) => {
+		if (event.key === 'Escape') menuOpen = false;
+	}}
+/>
 
 <!--
 	The skip link is the first focusable thing in the document, so a keyboard
@@ -66,12 +80,6 @@
 				{#each items as item (item.href)}
 					{@const active = isNavItemActive(page.url.pathname, item)}
 					<li>
-						<!--
-							`aria-current="page"` is what actually tells a
-							screen reader which link is the current location.
-							The colour change alone conveys nothing to someone
-							who cannot see it.
-						-->
 						<a href={item.href} class="nav-link" aria-current={active ? 'page' : undefined}>
 							{item.label}
 						</a>
@@ -82,23 +90,13 @@
 
 		<div class="account">
 			{#if user}
-				<!--
-					The email is the clearest confirmation of WHICH account is
-					signed in, which matters for an app holding a wallet. It is
-					hidden on narrow viewports, where the Account link alone
-					has to do.
-				-->
 				<span class="identity">{user.email ?? 'Signed in'}</span>
 				<Button href="/account" variant="secondary" size="sm">Account</Button>
 
 				<!--
 					A POST, not a link. A GET that changes state can be triggered by
-					anything that prefetches a URL — the browser's own preloading
-					included — and SvelteKit's CSRF origin check only covers form
-					submissions.
-
-					`action` is absolute so this works from any page, not only from
-					/account where the handler lives.
+					anything that prefetches a URL, and SvelteKit's CSRF origin check
+					only covers form submissions.
 				-->
 				<form method="POST" action="/account?/signout">
 					<Button type="submit" variant="quiet" size="sm">Sign out</Button>
@@ -108,8 +106,60 @@
 				<Button href="/join" variant="primary" size="sm">Join</Button>
 			{/if}
 		</div>
+
+		<button
+			type="button"
+			class="menu-toggle k-cut"
+			aria-expanded={menuOpen}
+			aria-controls="mobile-menu"
+			onclick={() => (menuOpen = !menuOpen)}
+		>
+			<span class="k-visually-hidden">{menuOpen ? 'Close menu' : 'Open menu'}</span>
+			<span class="bars" class:open={menuOpen} aria-hidden="true">
+				<span></span><span></span><span></span>
+			</span>
+		</button>
 	</div>
 </header>
+
+<!-- Mobile drawer. Closed on navigation, Escape, or a tap on the backdrop. -->
+{#if menuOpen}
+	<button
+		type="button"
+		class="backdrop"
+		aria-label="Close menu"
+		tabindex="-1"
+		onclick={() => (menuOpen = false)}
+	></button>
+{/if}
+
+<div id="mobile-menu" class="drawer" class:open={menuOpen} inert={!menuOpen}>
+	<nav aria-label="Mobile">
+		<ul class="drawer-list" role="list">
+			{#each items as item (item.href)}
+				{@const active = isNavItemActive(page.url.pathname, item)}
+				<li>
+					<a href={item.href} class="drawer-link" aria-current={active ? 'page' : undefined}>
+						{item.label}
+					</a>
+				</li>
+			{/each}
+		</ul>
+	</nav>
+
+	<div class="drawer-account">
+		{#if user}
+			<span class="drawer-identity">{user.email ?? 'Signed in'}</span>
+			<Button href="/account" variant="secondary">Account</Button>
+			<form method="POST" action="/account?/signout">
+				<Button type="submit" variant="quiet">Sign out</Button>
+			</form>
+		{:else}
+			<Button href="/join" variant="primary">Join</Button>
+			<Button href="/signin" variant="secondary">Sign in</Button>
+		{/if}
+	</div>
+</div>
 
 <style>
 	/* -- skip link -------------------------------------------------------
@@ -161,18 +211,10 @@
 		text-decoration: none;
 	}
 
-	/* -- navigation -------------------------------------------------------
-	   NARROW VIEWPORTS: the list scrolls horizontally rather than collapsing
-	   into a menu button. This is a deliberate interim choice — it needs no
-	   JavaScript and nothing becomes unreachable. A proper disclosure menu is
-	   a design decision to make once the navigation stops growing. */
+	/* -- navigation ------------------------------------------------------- */
 	.nav {
 		flex: 1;
 		min-width: 0;
-		overflow-x: auto;
-		/* Hide the horizontal scrollbar on platforms that draw a persistent
-		   one; the overflow is still scrollable by touch, wheel and keyboard. */
-		scrollbar-width: none;
 	}
 
 	.nav-list {
@@ -222,8 +264,151 @@
 		white-space: nowrap;
 	}
 
-	@media (max-width: 40rem) {
+	@media (max-width: 64rem) {
 		.identity {
+			display: none;
+		}
+	}
+
+	/* -- mobile menu ------------------------------------------------------ */
+	.menu-toggle {
+		display: none;
+		align-items: center;
+		justify-content: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		margin-left: auto;
+		padding: 0;
+		border: 0;
+		background-color: var(--k-surface-raised);
+		color: var(--k-text);
+		cursor: pointer;
+	}
+
+	.menu-toggle:focus-visible {
+		box-shadow: inset 0 0 0 2px var(--k-primary);
+		outline: none;
+	}
+
+	.bars {
+		display: grid;
+		gap: 5px;
+		width: 1.25rem;
+	}
+
+	.bars span {
+		display: block;
+		height: 2px;
+		background-color: currentColor;
+		transition: transform var(--k-duration-fast) var(--k-ease),
+			opacity var(--k-duration-fast) var(--k-ease);
+	}
+
+	.bars.open span:nth-child(1) {
+		transform: translateY(7px) rotate(45deg);
+	}
+
+	.bars.open span:nth-child(2) {
+		opacity: 0;
+	}
+
+	.bars.open span:nth-child(3) {
+		transform: translateY(-7px) rotate(-45deg);
+	}
+
+	.backdrop {
+		position: fixed;
+		inset: var(--k-header-h) 0 0 0;
+		z-index: 6;
+		padding: 0;
+		border: 0;
+		background-color: rgb(0 0 0 / 0.5);
+	}
+
+	.drawer {
+		position: fixed;
+		top: var(--k-header-h);
+		right: 0;
+		bottom: 0;
+		z-index: 7;
+		display: flex;
+		flex-direction: column;
+		gap: var(--k-space-5);
+		width: min(20rem, 85vw);
+		padding: var(--k-space-4);
+		overflow-y: auto;
+		background-color: var(--k-bg);
+		box-shadow: inset var(--k-line-width) 0 0 0 var(--k-line);
+		transform: translateX(100%);
+		visibility: hidden;
+		transition: transform var(--k-duration-fast) var(--k-ease),
+			visibility 0s linear var(--k-duration-fast);
+	}
+
+	.drawer.open {
+		transform: translateX(0);
+		visibility: visible;
+		transition: transform var(--k-duration-fast) var(--k-ease);
+	}
+
+	.drawer-list {
+		display: grid;
+		gap: var(--k-space-1);
+		margin: 0;
+	}
+
+	.drawer-link {
+		display: block;
+		padding: var(--k-space-3);
+		color: var(--k-text-muted);
+		text-decoration: none;
+	}
+
+	.drawer-link:hover {
+		color: var(--k-text);
+		background-color: var(--k-surface-raised);
+	}
+
+	.drawer-link[aria-current='page'] {
+		color: var(--k-accent);
+		box-shadow: inset 3px 0 0 0 var(--k-primary);
+	}
+
+	.drawer-account {
+		display: grid;
+		gap: var(--k-space-2);
+		padding-top: var(--k-space-4);
+		border-top: var(--k-line-width) solid var(--k-line);
+	}
+
+	.drawer-account form,
+	.drawer-account :global(.btn) {
+		width: 100%;
+	}
+
+	.drawer-identity {
+		overflow: hidden;
+		color: var(--k-text-subtle);
+		font-size: var(--k-text-sm);
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	@media (max-width: 48rem) {
+		.nav,
+		.account {
+			display: none;
+		}
+
+		.menu-toggle {
+			display: inline-flex;
+		}
+	}
+
+	/* The drawer is mobile-only even if left open while resizing wider. */
+	@media (min-width: 48.01rem) {
+		.drawer,
+		.backdrop {
 			display: none;
 		}
 	}

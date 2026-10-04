@@ -22,6 +22,28 @@
 	{/snippet}
 </PageHeader>
 
+{#if !data.setup.hasLocations || !data.setup.hasAvailability}
+	<div class="setup">
+		<Alert tone="info">
+			<strong>Buyers cannot request a meetup yet.</strong>
+			<p>
+				Add
+				{#if !data.setup.hasLocations && !data.setup.hasAvailability}
+					a meetup location and your weekly availability
+				{:else if !data.setup.hasLocations}
+					a meetup location
+				{:else}
+					your weekly availability
+				{/if}
+				— every listing uses them.
+			</p>
+		</Alert>
+		<div class="setup-action">
+			<Button href="/account#meetup-setup" variant="secondary" size="sm">Set up now</Button>
+		</div>
+	</div>
+{/if}
+
 {#if data.loadError}
 	<Alert tone="error">{data.loadError}</Alert>
 {:else if data.listings.length === 0}
@@ -48,6 +70,14 @@
 {/if}
 
 <style>
+	.setup {
+		margin-bottom: var(--k-space-4);
+	}
+
+	.setup-action {
+		margin-top: var(--k-space-3);
+	}
+
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(min(16rem, 100%), 1fr));

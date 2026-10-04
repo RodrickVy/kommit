@@ -50,14 +50,10 @@ interface CommitmentRow {
 /**
  * Statuses a listing may be bought in.
  *
- * `reserved` is included, and it is worth being explicit about why. Completing
- * a meetup releases the listing back to `active`, which means the seller can
- * receive new commitment requests while the buyer is still inspecting the
- * item — so by the time that buyer taps Pay, the listing may have been
- * reserved by somebody else's accepted commitment. Refusing the payment then
- * would penalise the buyer who actually turned up for a race they could not
- * see. Selling to them is correct; the other commitment resolves on its own
- * terms.
+ * A verified meetup keeps the listing `reserved` for the buyer's purchase
+ * window (see `listing_is_held` in the migrations), so `reserved` is the
+ * normal state here. `active` covers a buyer paying after that window lapsed
+ * and the listing went back on sale.
  */
 const PURCHASABLE = new Set(['active', 'reserved']);
 

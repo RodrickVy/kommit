@@ -467,6 +467,10 @@ Deno.serve(async (request: Request) => {
 		const overdue = await resolveOverdueCommitments(db, settings.check_in_window_minutes);
 		const reconciled = await reconcileSettlements(db);
 
+		/** Listings whose post-meetup purchase window lapsed without payment. */
+		const { data: released, error: releaseError } = await db.rpc('release_purchase_holds');
+		if (releaseError) console.error('[process_commitments] holds not released', releaseError);
+
 		const outcomes = [...expired, ...overdue, ...reconciled];
 		const failures = outcomes.filter((outcome) => outcome.failed.length > 0);
 
@@ -480,6 +484,7 @@ Deno.serve(async (request: Request) => {
 			expired: expired.length,
 			resolved: overdue.length,
 			reconciled: reconciled.length,
+			listings_released: released ?? 0,
 
 			/**
 			 * Reported rather than hidden behind a 200. A run that resolved ten

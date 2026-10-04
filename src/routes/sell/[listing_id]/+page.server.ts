@@ -208,10 +208,8 @@ export const actions: Actions = {
 	 * when the seller accepts.
 	 *
 	 * NOT DONE HERE, deliberately — see the migration:
-	 *   * stake calculation. Both sides get the market baseline for now; the
-	 *     specification requires reputation-adjusted, asymmetric amounts, and
-	 *     that becomes a change to this one assignment.
-	 *   * wallet locking. Nothing is reserved until the wallet service exists.
+	 *   * stake calculation. A flat $2.00 for both sides, owned by the Edge
+	 *     Function and `market_settings`.
 	 */
 	requestCommitment: async ({ request, locals, params, url }) => {
 		requireUser(await locals.getVerifiedUser(), url.pathname);

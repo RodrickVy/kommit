@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { invalidateAll } from '$app/navigation';
 	import Alert from '#lib/components/ui/Alert.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
@@ -16,14 +15,6 @@
 	 */
 	let { data }: PageProps = $props();
 
-	let refreshing = $state(false);
-
-	async function refresh() {
-		refreshing = true;
-		/** Re-runs the load, which calls query_wallet and re-reads the chain. */
-		await invalidateAll();
-		refreshing = false;
-	}
 </script>
 
 <svelte:head>
@@ -51,9 +42,6 @@
 			/>
 
 			<div class="done">
-				<Button type="button" variant="secondary" onclick={refresh} disabled={refreshing}>
-					{refreshing ? 'Checking…' : 'Refresh balance'}
-				</Button>
 				<Button href="/">Done</Button>
 			</div>
 		</div>
