@@ -481,6 +481,27 @@ export type Database = {
           },
         ]
       }
+      platform_wallet: {
+        Row: {
+          created_at: string
+          id: number
+          secret_key_encrypted: string
+          solana_address: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          secret_key_encrypted: string
+          solana_address: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          secret_key_encrypted?: string
+          solana_address?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           commitments_cancelled: number
@@ -538,6 +559,110 @@ export type Database = {
         }
         Relationships: []
       }
+      wallet_transactions: {
+        Row: {
+          charity_id: string | null
+          commitment_id: string | null
+          completed_at: string | null
+          created_at: string
+          failure_reason: string | null
+          from_address: string
+          id: string
+          idempotency_key: string
+          lamports: number
+          solana_signature: string | null
+          status: Database["public"]["Enums"]["wallet_transaction_status"]
+          to_address: string
+          type: Database["public"]["Enums"]["wallet_transaction_type"]
+          wallet_id: string | null
+        }
+        Insert: {
+          charity_id?: string | null
+          commitment_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          from_address: string
+          id?: string
+          idempotency_key: string
+          lamports: number
+          solana_signature?: string | null
+          status?: Database["public"]["Enums"]["wallet_transaction_status"]
+          to_address: string
+          type: Database["public"]["Enums"]["wallet_transaction_type"]
+          wallet_id?: string | null
+        }
+        Update: {
+          charity_id?: string | null
+          commitment_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          from_address?: string
+          id?: string
+          idempotency_key?: string
+          lamports?: number
+          solana_signature?: string | null
+          status?: Database["public"]["Enums"]["wallet_transaction_status"]
+          to_address?: string
+          type?: Database["public"]["Enums"]["wallet_transaction_type"]
+          wallet_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallet_transactions_commitment_id_fkey"
+            columns: ["commitment_id"]
+            isOneToOne: false
+            referencedRelation: "commitments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "wallet_transactions_wallet_id_fkey"
+            columns: ["wallet_id"]
+            isOneToOne: false
+            referencedRelation: "wallets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      wallets: {
+        Row: {
+          charity_id: string | null
+          created_at: string
+          id: string
+          profile_id: string | null
+          secret_key_encrypted: string
+          solana_address: string
+          updated_at: string
+        }
+        Insert: {
+          charity_id?: string | null
+          created_at?: string
+          id?: string
+          profile_id?: string | null
+          secret_key_encrypted: string
+          solana_address: string
+          updated_at?: string
+        }
+        Update: {
+          charity_id?: string | null
+          created_at?: string
+          id?: string
+          profile_id?: string | null
+          secret_key_encrypted?: string
+          solana_address?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wallets_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -574,6 +699,15 @@ export type Database = {
         | "completed"
       listing_condition: "new" | "used_like_new" | "used_good" | "used_fair"
       listing_status: "draft" | "active" | "reserved" | "sold" | "withdrawn"
+      wallet_transaction_status: "pending" | "completed" | "failed"
+      wallet_transaction_type:
+        | "deposit"
+        | "withdrawal"
+        | "commitment_lock"
+        | "commitment_refund"
+        | "commitment_forfeit"
+        | "purchase"
+        | "sale"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -731,6 +865,16 @@ export const Constants = {
       ],
       listing_condition: ["new", "used_like_new", "used_good", "used_fair"],
       listing_status: ["draft", "active", "reserved", "sold", "withdrawn"],
+      wallet_transaction_status: ["pending", "completed", "failed"],
+      wallet_transaction_type: [
+        "deposit",
+        "withdrawal",
+        "commitment_lock",
+        "commitment_refund",
+        "commitment_forfeit",
+        "purchase",
+        "sale",
+      ],
     },
   },
 } as const
