@@ -1,3 +1,4 @@
+import { dev } from '$app/env';
 import { fail, redirect } from '@sveltejs/kit';
 import { safeRedirectTarget } from '#lib/server/auth/guards';
 import type { Actions, PageServerLoad } from './$types';
@@ -152,25 +153,50 @@ export const actions: Actions = {
 			/**
 			 * Supabase could not send the confirmation email.
 			 *
-			 * Almost always means the project has "Confirm email" switched on
-			 * while still using Supabase's built-in SMTP, which is rate-limited
-			 * to a handful of messages an hour and is not intended for real use.
-			 * The symptom is maddening without this message: sign-up works once
-			 * or twice, then fails for an hour, then works again.
+			 * This covers several genuinely different causes — a rejected SMTP
+			 * credential, an unreachable relay, a rate limit — and they are NOT
+			 * interchangeable. An earlier version of this branch asserted "rate
+			 * limited" for all of them, which sent debugging down the wrong path
+			 * for an hour: the real failure was an SMTP credential, and the
+			 * message confidently said it was a quota.
 			 *
-			 * The account itself is usually created — only the email failed — so
-			 * the message says to try signing in rather than to try again.
+			 * So the user-facing text now says only what is certainly true: the
+			 * email did not go out, and the account may exist anyway.
+			 *
+			 * The distinction worth making is 429, which really is a quota and
+			 * really does resolve by waiting.
 			 */
+			const rateLimited = error.status === 429 || message.includes('rate limit');
+
+			/**
+			 * The underlying message is logged in full. Supabase's own text —
+			 * "Error sending confirmation email", an SMTP response code — is the
+			 * only thing that distinguishes a bad password from an unreachable
+			 * host, and it is invisible to the user by design.
+			 */
+			console.error('[join] sign-up email failed', {
+				status: error.status,
+				code: error.code,
+				message: error.message
+			});
+
 			if (
+				rateLimited ||
 				message.includes('sending confirmation') ||
 				message.includes('error sending') ||
-				message.includes('smtp') ||
-				message.includes('rate limit') ||
-				error.status === 429
+				message.includes('smtp')
 			) {
 				return failure(503, {
-					formError:
-						'Your account may have been created, but the confirmation email could not be sent — the email service is rate limited. Try signing in; if that does not work, wait a few minutes and try again.'
+					formError: rateLimited
+						? 'Too many emails have been sent recently. Wait a few minutes and try again.'
+						: 'Your account may have been created, but the confirmation email could not be sent. Try signing in.' +
+							/**
+							 * In development only, the raw cause is appended. It is the
+							 * fastest way to tell a wrong SMTP password from a wrong
+							 * host, and it must never reach a real user — error text
+							 * from an auth service can disclose configuration.
+							 */
+							(dev ? ` [dev] ${error.status ?? ''} ${error.message}` : '')
 				});
 			}
 

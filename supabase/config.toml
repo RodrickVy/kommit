@@ -298,7 +298,20 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = true
+#
+# OFF deliberately. Confirmation buys nothing here and costs a working sign-up:
+# Supabase could not hand the message to SendGrid, and every attempt failed
+# with a generic "Error sending confirmation email" that named no cause.
+#
+# It also becomes redundant later. The product uses passwordless email codes,
+# and you cannot sign in without receiving one — so the address is confirmed by
+# the act of signing in. Turning this back on is worth doing only if email
+# delivery is fixed AND password auth is kept.
+#
+# The trade-off, stated plainly: someone can register with an address they do
+# not own. That matters once wallets hold money. It does not matter while the
+# marketplace is being built.
+enable_confirmations = false
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
