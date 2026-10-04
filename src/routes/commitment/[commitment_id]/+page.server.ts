@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import { requireUser } from '#lib/server/auth/guards';
 import { invokeFunction } from '#lib/server/functions/invoke';
+import { renderQrSvg } from '#lib/server/qr';
 import type { Database } from '#lib/supabase/database.types';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -11,12 +12,16 @@ import type { Actions, PageServerLoad } from './$types';
  * role and the current status. That is decided on the server from the verified
  * session, and every action re-checks it before writing.
  *
- * NOT DONE HERE, deliberately:
- *   * no stake is locked, refunded or forfeited — the wallet service does not
- *     exist. Status and the event log are maintained correctly, so when it
- *     does exist it has an accurate history to act on.
- *   * reputation counters are not incremented. Everything needed to compute
- *     them later is recorded in `commitment_events`.
+ * NOTHING HERE MOVES MONEY OR CHANGES A STATUS DIRECTLY.
+ * Accepting, declining, cancelling, checking in, verifying the meetup and
+ * paying all delegate to Edge Functions, because each one has to change state
+ * and move SOL together. The one exception is withdrawing an unfunded request
+ * of one's own, which moves nothing.
+ *
+ * THE TWO QR CODES ARE SEPARATE THINGS and the page must never blur them:
+ *
+ *   QR #1 — verify the meetup. Returns both stakes. Buys nothing.
+ *   QR #2 — buy the item. Only after QR #1, and only if the buyer wants to.
  */
 
 type EventType = Database['public']['Enums']['commitment_event_type'];
@@ -28,7 +33,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const { data: commitment, error: loadError } = await locals.supabase
 		.from('commitments')
 		.select(
-			'id, status, responsible_party, scheduled_at, request_expires_at, created_at, accepted_at, declined_at, cancelled_at, buyer_id, seller_id, buyer_stake_cents, seller_stake_cents, listings(id, title, price_cents, condition), meetup_locations(name, latitude, longitude)'
+			'id, status, responsible_party, scheduled_at, request_expires_at, created_at, accepted_at, declined_at, cancelled_at, buyer_id, seller_id, buyer_stake_cents, seller_stake_cents, buyer_stake_lamports, seller_stake_lamports, buyer_checked_in_at, seller_checked_in_at, check_in_window_ends_at, meetup_verified_at, completed_at, listings(id, title, price_cents, condition, status), meetup_locations(name, latitude, longitude)'
 		)
 		.eq('id', params.commitment_id)
 		.maybeSingle();
@@ -43,24 +48,52 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	 */
 	if (!commitment) error(404, 'That commitment does not exist.');
 
-	const { data: events } = await locals.supabase
-		.from('commitment_events')
-		.select('id, event_type, actor_role, occurred_at')
-		.eq('commitment_id', commitment.id)
-		.order('occurred_at', { ascending: true });
+	const [eventsResult, settingsResult, paymentResult] = await Promise.all([
+		locals.supabase
+			.from('commitment_events')
+			.select('id, event_type, actor_role, occurred_at')
+			.eq('commitment_id', commitment.id)
+			.order('occurred_at', { ascending: true }),
+
+		/** Needed to tell the user the radius and the window before they act, not after. */
+		locals.supabase
+			.from('market_settings')
+			.select('check_in_radius_metres, check_in_window_minutes')
+			.eq('id', 1)
+			.maybeSingle(),
+
+		/**
+		 * The purchase, if there is one. Read through the user's own client, so
+		 * the policy on `payments` confirms they are party to it.
+		 */
+		locals.supabase
+			.from('payments')
+			.select('id, status, amount_cents, amount_lamports, solana_signature, completed_at')
+			.eq('commitment_id', commitment.id)
+			.order('created_at', { ascending: false })
+			.limit(1)
+			.maybeSingle()
+	]);
 
 	const isBuyer = commitment.buyer_id === user.id;
 
 	/**
-	 * A pending request past its deadline is dead, but nothing has marked it so
-	 * — expiry needs a scheduled job that does not exist yet. Computed here so
-	 * the page tells the truth meanwhile; the accept action refuses it
-	 * independently rather than trusting this value.
+	 * A pending request past its deadline is dead even though nothing has
+	 * marked it so yet — `process_commitments` does that on its next run.
+	 * Computed here so the page tells the truth meanwhile; the accept action
+	 * refuses it independently rather than trusting this value.
 	 */
 	const expired =
 		commitment.status === 'pending' && new Date(commitment.request_expires_at) <= new Date();
 
-	return { commitment, events: events ?? [], isBuyer, expired };
+	return {
+		commitment,
+		events: eventsResult.data ?? [],
+		settings: settingsResult.data,
+		payment: paymentResult.data,
+		isBuyer,
+		expired
+	};
 };
 
 /** Loads a commitment and confirms the caller is party to it. */
@@ -99,14 +132,94 @@ async function recordEvent(
 	});
 }
 
-const ok = (message: string) => ({ actionError: null, message, needsFunds: false });
+/**
+ * One result shape for every action on this page.
+ *
+ * Normalised because SvelteKit unions the return types of all actions into
+ * `form`, and a page branching on six different shapes becomes unreadable very
+ * quickly. Every field is always present, so the template never has to guess
+ * which action produced the result it is rendering.
+ */
+interface ActionResult {
+	actionError: string | null;
+	message: string | null;
+
+	/** True when the failure is "not enough SOL", which earns an Add funds link. */
+	needsFunds: boolean;
+
+	/** A freshly issued QR, for the seller to display. Never both at once. */
+	qr: {
+		purpose: 'meetup_verification' | 'purchase';
+		url: string;
+		svg: string | null;
+		expiresAt: string;
+	} | null;
+}
+
+const base: ActionResult = { actionError: null, message: null, needsFunds: false, qr: null };
+
+const ok = (message: string): ActionResult => ({ ...base, message });
+const problem = (actionError: string, needsFunds = false): ActionResult => ({
+	...base,
+	actionError,
+	needsFunds
+});
+
+/** What both QR functions return. */
+interface IssuedQr {
+	token: string;
+	path: string;
+	expires_at: string;
+}
+
+/**
+ * Issues a QR and renders it, for whichever of the two codes is asked for.
+ *
+ * THE ABSOLUTE URL IS BUILT HERE, from the request's own origin. The function
+ * returns a relative path deliberately: a URL hardcoded in the Edge Function
+ * would point a preview deployment's QR at production, and someone would scan
+ * it before anyone noticed.
+ */
+async function issueQr(
+	locals: App.Locals,
+	functionName: 'create_commitment_qr' | 'create_payment_qr',
+	purpose: 'meetup_verification' | 'purchase',
+	commitmentId: string,
+	origin: string
+) {
+	const result = await invokeFunction<IssuedQr>(locals.supabase, functionName, {
+		commitment_id: commitmentId
+	});
+
+	if (!result.ok) {
+		return fail(409, problem(result.error.message));
+	}
+
+	const absolute = `${origin}${result.data.path}`;
+
+	return {
+		...base,
+		qr: {
+			purpose,
+			url: absolute,
+
+			/**
+			 * Null when the code could not be drawn. The token is real either way,
+			 * so the page falls back to showing the link rather than reporting a
+			 * failure for something that worked.
+			 */
+			svg: await renderQrSvg(absolute),
+			expiresAt: result.data.expires_at
+		}
+	};
+}
 
 export const actions: Actions = {
 	/**
 	 * The seller agrees. Delegated to `respond_to_commitment`, which takes the
 	 * seller's stake before activating the commitment.
 	 *
-	 * This file no longer changes the status itself. Only the Edge Function can
+	 * This file does not change the status itself. Only the Edge Function can
 	 * move the money, and a commitment must never become active with one side
 	 * unpaid — so the state change belongs where the payment happens.
 	 */
@@ -120,11 +233,10 @@ export const actions: Actions = {
 		);
 
 		if (!result.ok) {
-			return fail(result.error.code === 'INSUFFICIENT_FUNDS' ? 402 : 409, {
-				actionError: result.error.message,
-				message: null,
-				needsFunds: result.error.code === 'INSUFFICIENT_FUNDS' || result.error.code === 'WALLET_NOT_FOUND'
-			});
+			const needsFunds =
+				result.error.code === 'INSUFFICIENT_FUNDS' || result.error.code === 'WALLET_NOT_FOUND';
+
+			return fail(needsFunds ? 402 : 409, problem(result.error.message, needsFunds));
 		}
 
 		return ok('Accepted. Both stakes are now held — you are committed to this meetup.');
@@ -140,9 +252,7 @@ export const actions: Actions = {
 			{ commitment_id: params.commitment_id, action: 'decline' }
 		);
 
-		if (!result.ok) {
-			return fail(409, { actionError: result.error.message, message: null, needsFunds: false });
-		}
+		if (!result.ok) return fail(409, problem(result.error.message));
 
 		/**
 		 * The refund can fail independently of the decline. Saying so is the
@@ -164,12 +274,8 @@ export const actions: Actions = {
 			url.pathname
 		);
 
-		if (!isBuyer) {
-			return fail(403, { actionError: 'Only the buyer can withdraw a request.', message: null, needsFunds: false });
-		}
-		if (commitment.status !== 'pending') {
-			return fail(409, { actionError: 'This request is no longer open.', message: null, needsFunds: false });
-		}
+		if (!isBuyer) return fail(403, problem('Only the buyer can withdraw a request.'));
+		if (commitment.status !== 'pending') return fail(409, problem('This request is no longer open.'));
 
 		await locals.supabase
 			.from('commitments')
@@ -185,21 +291,14 @@ export const actions: Actions = {
 	/**
 	 * Either party backs out AFTER acceptance.
 	 *
-	 * The one action that carries a consequence: whoever cancels forfeits their
-	 * stake and the other is refunded. Neither happens yet — there is no wallet
-	 * — but `responsible_party` is recorded now, so that when there is one, the
-	 * history already says who was at fault rather than requiring it to be
-	 * inferred from timestamps.
+	 * Delegated to `cancel_commitment`, which forfeits the canceller's stake and
+	 * refunds the other participant. Nothing about the status is changed here:
+	 * the state and the settlements have to move together, and only the function
+	 * can do the second half.
 	 */
 	cancel: async ({ locals, params, url }) => {
 		requireUser(await locals.getVerifiedUser(), url.pathname);
 
-		/**
-		 * Delegated to `cancel_commitment`, which forfeits the canceller's stake
-		 * and refunds the other participant. Nothing about the status is changed
-		 * here: the state and the settlements have to move together, and only the
-		 * function can do the second half.
-		 */
 		const result = await invokeFunction<{
 			cancelled_by: 'buyer' | 'seller';
 			refunded: boolean;
@@ -207,10 +306,100 @@ export const actions: Actions = {
 			message: string;
 		}>(locals.supabase, 'cancel_commitment', { commitment_id: params.commitment_id });
 
-		if (!result.ok) {
-			return fail(409, { actionError: result.error.message, message: null, needsFunds: false });
-		}
+		if (!result.ok) return fail(409, problem(result.error.message));
 
 		return ok(result.data.message);
+	},
+
+	/**
+	 * "I am here."
+	 *
+	 * The coordinates come from the browser's Geolocation API and are filled
+	 * into hidden fields before the form submits — which is why this action
+	 * needs JavaScript, and says so in the UI. There is no server-side way to
+	 * learn where a phone is.
+	 *
+	 * The position is NOT trusted here. `check_in` compares it against the
+	 * agreed location and refuses anything outside the configured radius; this
+	 * action only carries it across.
+	 */
+	checkIn: async ({ locals, params, request, url }) => {
+		requireUser(await locals.getVerifiedUser(), url.pathname);
+
+		const data = await request.formData();
+		const latitude = Number(data.get('latitude'));
+		const longitude = Number(data.get('longitude'));
+
+		/**
+		 * `Number('')` is 0, and (0, 0) is a real place in the Gulf of Guinea —
+		 * so an empty field would otherwise submit as a position rather than as
+		 * a missing one, and be reported as "you are 11,000km away".
+		 */
+		if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || (latitude === 0 && longitude === 0)) {
+			return fail(
+				400,
+				problem('Your location could not be read. Allow location access and try again.')
+			);
+		}
+
+		const result = await invokeFunction<{
+			both_checked_in: boolean;
+			already_checked_in: boolean;
+			other_checked_in_at: string | null;
+			deadline: string | null;
+			distance_metres?: number;
+		}>(locals.supabase, 'check_in', {
+			commitment_id: params.commitment_id,
+			latitude,
+			longitude
+		});
+
+		if (!result.ok) return fail(409, problem(result.error.message));
+
+		if (result.data.already_checked_in) {
+			return ok('You were already checked in.');
+		}
+
+		return ok(
+			result.data.both_checked_in
+				? 'Checked in. You are both here — the seller can now show the verification code.'
+				: 'Checked in. Waiting for the other person to arrive.'
+		);
+	},
+
+	/**
+	 * The seller shows QR #1, which the buyer scans to verify the meetup.
+	 *
+	 * Issuing a new code revokes the previous one, so this doubles as the
+	 * refresh action — there is no state in which two codes are live.
+	 */
+	showMeetupQr: async ({ locals, params, url }) => {
+		requireUser(await locals.getVerifiedUser(), url.pathname);
+
+		return await issueQr(
+			locals,
+			'create_commitment_qr',
+			'meetup_verification',
+			params.commitment_id,
+			url.origin
+		);
+	},
+
+	/**
+	 * The seller shows QR #2, for the optional purchase.
+	 *
+	 * Only possible once the meetup is verified. The buyer is under no
+	 * obligation to scan it.
+	 */
+	showPaymentQr: async ({ locals, params, url }) => {
+		requireUser(await locals.getVerifiedUser(), url.pathname);
+
+		return await issueQr(
+			locals,
+			'create_payment_qr',
+			'purchase',
+			params.commitment_id,
+			url.origin
+		);
 	}
 };

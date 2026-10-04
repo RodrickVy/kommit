@@ -1,6 +1,7 @@
 import { redirect } from '@sveltejs/kit';
 import { requireUser } from '#lib/server/auth/guards';
 import { loadWallet } from '#lib/server/functions/invoke';
+import { renderQrSvg } from '#lib/server/qr';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -27,5 +28,13 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		redirect(303, '/wallet');
 	}
 
-	return { wallet, loadError: error?.message ?? null };
+	/**
+	 * Rendered on the server so the browser receives markup rather than a
+	 * drawing library. Most people doing this have Solflare on their phone and
+	 * kommitly open on a laptop, and scanning is the only way to move 44 base58
+	 * characters between the two without a typo.
+	 */
+	const qr = wallet ? await renderQrSvg(wallet.solana_address) : null;
+
+	return { wallet, qr, loadError: error?.message ?? null };
 };

@@ -22,6 +22,24 @@ export type ErrorCode =
 	| 'RENT_MINIMUM'
 	| 'CHAIN_UNAVAILABLE'
 	| 'IDEMPOTENCY_KEY_REUSED'
+
+	/** Check-in and meetup verification. */
+	| 'OUTSIDE_RADIUS'
+	| 'LOCATION_UNAVAILABLE'
+	| 'NOT_YET_OPEN'
+	| 'WINDOW_CLOSED'
+	| 'ALREADY_CHECKED_IN'
+	| 'AWAITING_OTHER_PARTY'
+
+	/** QR tokens. Mirrors the failure cases in _shared/qr.ts. */
+	| 'QR_INVALID'
+	| 'QR_EXPIRED'
+	| 'QR_ALREADY_USED'
+
+	/** Purchase. */
+	| 'LISTING_UNAVAILABLE'
+	| 'ALREADY_PAID'
+
 	| 'INTERNAL';
 
 export function json(body: unknown, status = 200): Response {

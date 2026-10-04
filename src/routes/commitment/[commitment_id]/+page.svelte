@@ -5,7 +5,9 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
-	import { formatPrice } from '#lib/format';
+	import CheckInButton from '#lib/components/commitments/CheckInButton.svelte';
+	import QrDisplay from '#lib/components/commitments/QrDisplay.svelte';
+	import { formatPrice, formatSol } from '#lib/format';
 	import { COMMITMENT_STATUS_LABELS, EVENT_LABELS, statusTone } from '#lib/commitments/labels';
 	import type { PageProps } from './$types';
 
@@ -14,11 +16,23 @@
 	 *
 	 * One page for both parties. Which actions appear depends on role and
 	 * status, decided on the server; every action re-checks before writing.
+	 *
+	 * The page is careful about one distinction above all others: verifying the
+	 * meetup and buying the item are separate, and the second is optional. A
+	 * buyer who turns up, looks at the item and leaves has fulfilled their
+	 * commitment completely, and nothing here may imply otherwise.
 	 */
 	let { data, form }: PageProps = $props();
 
 	const c = $derived(data.commitment);
 	const myStake = $derived(data.isBuyer ? c.buyer_stake_cents : c.seller_stake_cents);
+	const myStakeLamports = $derived(
+		data.isBuyer ? c.buyer_stake_lamports : c.seller_stake_lamports
+	);
+
+	const iCheckedIn = $derived(data.isBuyer ? c.buyer_checked_in_at : c.seller_checked_in_at);
+	const theyCheckedIn = $derived(data.isBuyer ? c.seller_checked_in_at : c.buyer_checked_in_at);
+	const bothCheckedIn = $derived(Boolean(iCheckedIn && theyCheckedIn));
 
 	/** Shown in the viewer's own timezone — both parties mean the same instant. */
 	function at(iso: string): string {
@@ -30,6 +44,47 @@
 			minute: '2-digit'
 		}).format(new Date(iso));
 	}
+
+	function time(iso: string): string {
+		return new Intl.DateTimeFormat('en-CA', { hour: 'numeric', minute: '2-digit' }).format(
+			new Date(iso)
+		);
+	}
+
+	/**
+	 * What has actually happened to this viewer's stake.
+	 *
+	 * Written per status rather than as one hopeful sentence, because every one
+	 * of these is a claim about the viewer's money. "Held" when it is not, or
+	 * "returned" when the transfer failed, is the kind of statement they would
+	 * only disprove by checking their balance.
+	 */
+	const stakeNote = $derived.by(() => {
+		const iAmResponsible = c.responsible_party === (data.isBuyer ? 'buyer' : 'seller');
+
+		switch (c.status) {
+			case 'pending':
+				return data.isBuyer
+					? 'Held since you sent the request. It comes back if the seller declines or never answers.'
+					: 'Not taken yet. It is only held once you accept.';
+			case 'accepted':
+				return 'Held until the meetup is verified, then returned.';
+			case 'completed':
+				return 'Returned. Verifying the meetup released both stakes.';
+			case 'declined':
+			case 'expired':
+				return data.isBuyer ? 'Refunded in full.' : 'Nothing was taken.';
+			case 'stale':
+				return 'Returned. Nobody was blamed, so neither stake was forfeited.';
+			case 'cancelled':
+			case 'no_show':
+				return iAmResponsible
+					? 'Forfeited to the selected charity.'
+					: 'Refunded in full.';
+			default:
+				return 'Nothing is held.';
+		}
+	});
 </script>
 
 <svelte:head>
@@ -51,9 +106,9 @@
 		{#if form.needsFunds}
 			<!--
 				The seller could not cover their stake, so acceptance did not
-				happen. Worth saying plainly: the buyer's stake is untouched and
-				the request is still open, so topping up and accepting again
-				costs nothing.
+				happen. Worth saying plainly: the buyer's stake is untouched and the
+				request is still open, so topping up and accepting again costs
+				nothing.
 			-->
 			<div class="fund">
 				<Button href="/wallet/fund_wallet" variant="secondary" size="sm">Add funds</Button>
@@ -106,6 +161,206 @@
 			</div>
 		</Panel>
 
+		{#if c.status === 'accepted' && !data.expired}
+			<Panel>
+				<h2 class="panel-title">Arriving</h2>
+
+				<!--
+					Both sides' state, always. Each person's next move depends on
+					whether the other is there yet, and the alternative is two people
+					standing in the same car park refreshing a page that tells them
+					nothing.
+				-->
+				<ul class="arrivals" role="list">
+					<li class:in={Boolean(iCheckedIn)}>
+						<span class="who">You</span>
+						<span class="state">
+							{iCheckedIn ? `Checked in at ${time(iCheckedIn)}` : 'Not checked in'}
+						</span>
+					</li>
+					<li class:in={Boolean(theyCheckedIn)}>
+						<span class="who">{data.isBuyer ? 'Seller' : 'Buyer'}</span>
+						<span class="state">
+							{theyCheckedIn ? `Arrived at ${time(theyCheckedIn)}` : 'Not here yet'}
+						</span>
+					</li>
+				</ul>
+
+				{#if c.check_in_window_ends_at && !bothCheckedIn}
+					<p class="deadline">
+						{#if iCheckedIn}
+							They have until {time(c.check_in_window_ends_at)} to check in. After
+							that this is recorded as their no-show and your stake comes back.
+						{:else}
+							You have until {time(c.check_in_window_ends_at)}. Miss it and this is
+							recorded as your no-show, which forfeits your stake.
+						{/if}
+					</p>
+				{/if}
+
+				{#if !iCheckedIn}
+					<div class="actions">
+						<CheckInButton action="?/checkIn" />
+					</div>
+					{#if data.settings}
+						<p class="muted">
+							You need to be within {data.settings.check_in_radius_metres}m of
+							{c.meetup_locations?.name ?? 'the agreed location'}. Your browser will
+							ask for permission to read your location.
+						</p>
+					{/if}
+				{:else if !bothCheckedIn}
+					<p class="muted">You are checked in. Waiting for the other person to arrive.</p>
+				{/if}
+
+				{#if bothCheckedIn}
+					<!--
+						THE SECOND STEP, and deliberately not automatic. Both being
+						checked in means both devices report the right place; scanning
+						the code is what proves the two people are actually together.
+					-->
+					<div class="verify">
+						<h3 class="sub-title">Verify the meetup</h3>
+
+						{#if data.isBuyer}
+							<p class="muted">
+								Ask the seller to show their verification code, then scan it with
+								your phone's camera. Scanning it completes the commitment and
+								returns both stakes — it does not buy anything.
+							</p>
+						{:else}
+							{#if form?.qr?.purpose === 'meetup_verification'}
+								<QrDisplay
+									qr={form.qr}
+									refreshAction="?/showMeetupQr"
+									instructions="The buyer scans this with their phone. It verifies the meetup and returns both stakes — it does not take payment."
+								/>
+							{:else}
+								<p class="muted">
+									Show this code to the buyer. Scanning it verifies the meetup and
+									returns both stakes. It does not take payment.
+								</p>
+								<div class="actions">
+									<form method="POST" action="?/showMeetupQr" use:enhance>
+										<Button type="submit">Show verification code</Button>
+									</form>
+								</div>
+							{/if}
+						{/if}
+					</div>
+				{/if}
+			</Panel>
+		{/if}
+
+		{#if c.status === 'completed'}
+			<Panel tone="raised">
+				<h2 class="panel-title">Commitment complete</h2>
+
+				<p class="complete">
+					You met, and the meetup is verified. Your commitment stake has been
+					returned.
+				</p>
+
+				{#if data.payment?.status === 'completed'}
+					<!--
+						Rendered before the purchase prompt, so a completed sale never
+						sits underneath an invitation to buy.
+					-->
+					<div class="paid">
+						<Alert tone="success">
+							Paid {formatPrice(data.payment.amount_cents)}
+							({formatSol(data.payment.amount_lamports)}) for this item.
+						</Alert>
+						{#if data.payment.solana_signature}
+							<p class="muted">
+								Transaction
+								<span class="mono">{data.payment.solana_signature.slice(0, 16)}…</span>
+							</p>
+						{/if}
+					</div>
+				{:else if c.listings?.status === 'sold'}
+					<p class="muted">This item has been sold.</p>
+				{:else}
+					<!--
+						THE INSPECTION STAGE. The commitment is already fulfilled, so the
+						wording has to make walking away the equal option rather than the
+						one you decline into.
+					-->
+					<div class="inspect">
+						<h3 class="sub-title">Buying is optional</h3>
+
+						{#if data.isBuyer}
+							<p class="muted">
+								Take your time with the item. You can walk away now with no
+								penalty — your stake is already back. If you do want it, ask the
+								seller to show their purchase code.
+							</p>
+							{#if c.listings}
+								<p class="price">
+									{c.listings.title} · <strong>{formatPrice(c.listings.price_cents)}</strong>
+								</p>
+							{/if}
+						{:else if form?.qr?.purpose === 'purchase'}
+							<QrDisplay
+								qr={form.qr}
+								refreshAction="?/showPaymentQr"
+								instructions="The buyer scans this to open a payment page. Scanning alone charges nothing — they still have to confirm the amount."
+							/>
+						{:else}
+							<p class="muted">
+								If the buyer wants the item, show them this code. It opens a
+								payment page for them; scanning it does not take money on its
+								own.
+							</p>
+							<div class="actions">
+								<form method="POST" action="?/showPaymentQr" use:enhance>
+									<Button type="submit">Show purchase code</Button>
+								</form>
+							</div>
+						{/if}
+					</div>
+				{/if}
+			</Panel>
+		{/if}
+
+		{#if c.status === 'stale'}
+			<Panel>
+				<h2 class="panel-title">Closed without blame</h2>
+				<p class="muted">
+					This commitment could not be resolved from the evidence available, so
+					it was marked unresolved and <strong>both stakes were returned</strong>.
+					Nobody was penalised and nothing was recorded against either of you.
+				</p>
+			</Panel>
+		{:else if c.status === 'no_show'}
+			<Panel>
+				<h2 class="panel-title">
+					{c.responsible_party === (data.isBuyer ? 'buyer' : 'seller')
+						? 'Recorded as your no-show'
+						: 'The other person did not arrive'}
+				</h2>
+				<p class="muted">
+					{#if c.responsible_party === (data.isBuyer ? 'buyer' : 'seller')}
+						Nobody checked you in at the agreed location within the window, so
+						your stake was forfeited to the selected charity and the other
+						person was refunded.
+					{:else}
+						They never checked in, so your stake was returned in full and theirs
+						was forfeited to the selected charity.
+					{/if}
+				</p>
+			</Panel>
+		{:else if c.status === 'expired'}
+			<Panel>
+				<h2 class="panel-title">The seller never responded</h2>
+				<p class="muted">
+					{data.isBuyer
+						? 'This request expired without an answer, so your stake was refunded in full. You can send a new request.'
+						: 'This request expired without your answer. The buyer was refunded and nothing was taken from you — but declining promptly is free, and ignoring requests is recorded.'}
+				</p>
+			</Panel>
+		{/if}
+
 		<Panel>
 			<h2 class="panel-title">History</h2>
 			{#if data.events.length === 0}
@@ -127,25 +382,17 @@
 		<Panel>
 			<h2 class="panel-title">Your stake</h2>
 			<p class="stake">{formatPrice(myStake)}</p>
-			<p class="muted">
-				{#if c.status === 'pending'}
-					Not taken yet. It is only held once the seller accepts.
-				{:else if c.status === 'accepted'}
-					Held until the meetup is verified, then returned.
-				{:else}
-					Nothing is held.
-				{/if}
-			</p>
 
 			<!--
-				Honest about what is not built. Showing a figure without this would
-				imply money has moved, and none has.
+				The lamport figure is the amount that actually moved, and it is what
+				a refund returns — not a reconversion of the dollar amount. Shown
+				where it exists so the two numbers never appear to disagree.
 			-->
-			<p class="deferred">
-				Stakes are recorded but not collected — the wallet is not built yet.
-				Both sides currently use the market default rather than a
-				reputation-adjusted amount.
-			</p>
+			{#if myStakeLamports}
+				<p class="stake-sol">{formatSol(myStakeLamports)}</p>
+			{/if}
+
+			<p class="muted">{stakeNote}</p>
 		</Panel>
 
 		<Panel>
@@ -157,8 +404,8 @@
 				</p>
 			{:else if c.status === 'pending' && !data.isBuyer}
 				<p class="muted">
-					Accepting commits you both. Declining is free and is not held against
-					you.
+					Accepting commits you both and takes your stake. Declining is free and
+					is not held against you.
 				</p>
 				<div class="actions">
 					<form method="POST" action="?/accept" use:enhance>
@@ -245,6 +492,14 @@
 		font-size: var(--k-text-lg);
 	}
 
+	.sub-title {
+		margin-bottom: var(--k-space-2);
+		font-size: var(--k-text-sm);
+		text-transform: uppercase;
+		letter-spacing: var(--k-tracking-wide);
+		color: var(--k-text-subtle);
+	}
+
 	.pairs {
 		display: grid;
 		gap: var(--k-space-3);
@@ -272,6 +527,64 @@
 		margin-top: var(--k-space-5);
 	}
 
+	.arrivals {
+		display: grid;
+		gap: var(--k-space-2);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.arrivals li {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		gap: var(--k-space-3);
+		padding: var(--k-space-3);
+		background-color: var(--k-surface-sunken);
+		font-size: var(--k-text-sm);
+	}
+
+	/* Arrival is marked with a left edge as well as colour, so the state is not
+	   carried by hue alone. */
+	.arrivals li.in {
+		box-shadow: inset 3px 0 0 var(--k-primary);
+	}
+
+	.who {
+		font-weight: 600;
+	}
+
+	.state {
+		color: var(--k-text-muted);
+	}
+
+	.deadline {
+		margin-top: var(--k-space-3);
+		color: var(--k-warning);
+		font-size: var(--k-text-sm);
+	}
+
+	.verify,
+	.inspect {
+		margin-top: var(--k-space-5);
+		padding-top: var(--k-space-4);
+		border-top: var(--k-line-width) solid var(--k-line);
+	}
+
+	.complete {
+		font-size: var(--k-text-sm);
+	}
+
+	.paid {
+		margin-top: var(--k-space-4);
+	}
+
+	.price {
+		margin-top: var(--k-space-3);
+		font-size: var(--k-text-sm);
+	}
+
 	.timeline {
 		display: grid;
 		gap: var(--k-space-2);
@@ -294,23 +607,27 @@
 		color: var(--k-text-subtle);
 	}
 
+	.mono {
+		font-family: var(--k-font-mono);
+		overflow-wrap: anywhere;
+	}
+
 	.stake {
 		font-size: var(--k-text-2xl);
 		font-weight: 600;
+	}
+
+	.stake-sol {
+		margin-top: var(--k-space-1);
+		color: var(--k-text-subtle);
+		font-size: var(--k-text-sm);
+		font-variant-numeric: tabular-nums;
 	}
 
 	.muted {
 		margin-top: var(--k-space-2);
 		color: var(--k-text-muted);
 		font-size: var(--k-text-sm);
-	}
-
-	.deferred {
-		margin-top: var(--k-space-4);
-		padding-top: var(--k-space-3);
-		border-top: var(--k-line-width) solid var(--k-line);
-		color: var(--k-text-subtle);
-		font-size: var(--k-text-xs);
 	}
 
 	.actions {

@@ -29,7 +29,9 @@ export type NavVisibility =
 	/** Shown to everyone, signed in or not. */
 	| 'public'
 	/** Shown only once a verified user is present. */
-	| 'authenticated';
+	| 'authenticated'
+	/** Shown only to a user whose profile carries `is_admin`. */
+	| 'admin';
 
 /** One entry in the primary navigation. */
 export interface NavItem {
@@ -67,7 +69,8 @@ export const PRIMARY_NAV: readonly NavItem[] = [
 	{ label: 'Sell', href: '/sell', visibility: 'authenticated' },
 	{ label: 'Wallet', href: '/wallet', visibility: 'authenticated' },
 	{ label: 'Impact', href: '/impact', visibility: 'public' },
-	{ label: 'Stats', href: '/stats', visibility: 'public' }
+	{ label: 'Stats', href: '/stats', visibility: 'public' },
+	{ label: 'Admin', href: '/admin', visibility: 'admin' }
 ] as const;
 
 /**
@@ -104,11 +107,18 @@ export function isNavItemActive(pathname: string, item: NavItem): boolean {
  *
  * @param items         The entries to filter, normally {@link PRIMARY_NAV}.
  * @param isSignedIn    Whether a verified user is present on this request.
+ * @param isAdmin       Whether that user administers the marketplace.
  * @returns The visible subset, in the original order.
  */
 export function visibleNavItems(
 	items: readonly NavItem[],
-	isSignedIn: boolean
+	isSignedIn: boolean,
+	isAdmin = false
 ): readonly NavItem[] {
-	return items.filter((item) => item.visibility === 'public' || isSignedIn);
+	return items.filter((item) => {
+		if (item.visibility === 'public') return true;
+		if (item.visibility === 'admin') return isAdmin;
+
+		return isSignedIn;
+	});
 }

@@ -1,3 +1,4 @@
+import { isAdminUser } from '#lib/server/auth/admin';
 import type { LayoutServerLoad } from './$types';
 
 /**
@@ -46,6 +47,21 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	const user = await locals.getVerifiedUser();
 
 	/**
+	 * The admin flag belongs to the shell: it decides whether the header shows
+	 * an Admin link, which is the definition of what this layout is for.
+	 *
+	 * It costs one primary-key lookup, and only for signed-in users —
+	 * `isAdminUser` returns false immediately for an anonymous visitor without
+	 * touching the database. Because this load still depends on nothing
+	 * trackable, the query runs on a full page load and not again as the user
+	 * navigates.
+	 *
+	 * Hiding the link is cosmetic. `/admin` answers 404 to anyone who is not an
+	 * administrator, whatever the navigation says.
+	 */
+	const isAdmin = await isAdminUser(user);
+
+	/**
 	 * Returned as `data.user` to the layout and, through inheritance, to
 	 * every page beneath it.
 	 *
@@ -54,5 +70,5 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	 * full Supabase user object would ship its metadata, identity list and
 	 * timestamps to the browser on every single page view.
 	 */
-	return { user };
+	return { user, isAdmin };
 };

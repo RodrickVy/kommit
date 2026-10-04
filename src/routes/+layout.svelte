@@ -37,7 +37,7 @@
 </svelte:head>
 
 <div class="shell">
-	<AppHeader user={data.user} />
+	<AppHeader user={data.user} isAdmin={data.isAdmin} />
 
 	<!--
 		`id="main"` is the destination of the header's skip link, and

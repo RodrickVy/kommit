@@ -21,9 +21,16 @@
 		 * loaded — see `src/routes/+layout.server.ts`.
 		 */
 		user: SessionUser | null;
+
+		/**
+		 * Whether this user administers the marketplace, which reveals the
+		 * Admin link. PRESENTATION ONLY — /admin guards itself, and hiding a
+		 * link protects nothing. See the warning on `NavVisibility`.
+		 */
+		isAdmin?: boolean;
 	}
 
-	let { user }: Props = $props();
+	let { user, isAdmin = false }: Props = $props();
 
 	/**
 	 * Which links this visitor sees. Recomputed when `user` changes, which
@@ -32,7 +39,7 @@
 	 * This is visibility, not access control: the routes themselves are
 	 * guarded server-side. See the warning on `NavVisibility`.
 	 */
-	const items = $derived(visibleNavItems(PRIMARY_NAV, user !== null));
+	const items = $derived(visibleNavItems(PRIMARY_NAV, user !== null, isAdmin));
 </script>
 
 <!--

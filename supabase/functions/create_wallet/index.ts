@@ -1,5 +1,6 @@
 import { callerId, serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
+import { hasServiceRole, privilegedCaller } from '../_shared/privileged.ts';
 import { createWallet } from '../_shared/solana.ts';
 
 /**
@@ -44,7 +45,26 @@ Deno.serve(async (request: Request) => {
 	const db = serviceClient();
 
 	try {
+		/**
+		 * CHARITY WALLETS ARE PRIVILEGED, and this gate was missing.
+		 *
+		 * There are only ever three charities and they are seeded by migration,
+		 * so nothing a user does should create a wallet for one. Left open, any
+		 * signed-in account could generate custodial keypairs for arbitrary
+		 * charity ids — not a theft route, since the platform holds the keys,
+		 * but an unauthenticated way to make the service mint and encrypt keys
+		 * on demand, and an operation nobody could attribute afterwards.
+		 *
+		 * Accepts the service role (setup scripts) or an administrator (the
+		 * /admin page).
+		 */
 		if (isCharity) {
+			const caller = await privilegedCaller(request, db, await callerId(request));
+
+			if (!caller) {
+				return fail('UNAUTHORIZED', 'Only an administrator can create a charity wallet.', 403);
+			}
+
 			return await createFor(db, 'charity_id', body.charity_id, 'charities');
 		}
 
@@ -66,7 +86,7 @@ Deno.serve(async (request: Request) => {
 		 * invokes this during sign-up before any user session exists.
 		 */
 		const caller = await callerId(request);
-		const isServiceRole = caller === null && isServiceRoleToken(request);
+		const isServiceRole = caller === null && (await hasServiceRole(request));
 
 		if (!isServiceRole && caller !== profileId) {
 			return fail('UNAUTHORIZED', 'You can only create your own wallet.', 403);
@@ -82,12 +102,6 @@ Deno.serve(async (request: Request) => {
 		return fail('INTERNAL', 'The wallet could not be created.', 500);
 	}
 });
-
-/** True when the bearer token is the service role rather than a user session. */
-function isServiceRoleToken(request: Request): boolean {
-	const token = request.headers.get('Authorization')?.replace('Bearer ', '') ?? '';
-	return token === Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-}
 
 /**
  * Shared body of both endpoints.

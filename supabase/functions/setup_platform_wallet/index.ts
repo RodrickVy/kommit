@@ -1,7 +1,7 @@
 import { serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
+import { hasServiceRole } from '../_shared/privileged.ts';
 import { createWallet } from '../_shared/solana.ts';
-import { createClient } from 'npm:@supabase/supabase-js@^2.117.0';
 
 /**
  * setup_platform_wallet — creates the single Kommitly Main Wallet.
@@ -27,36 +27,6 @@ import { createClient } from 'npm:@supabase/supabase-js@^2.117.0';
  * would not be a duplicate, it would be an empty treasury while every held
  * stake sits in an address the app has stopped using.
  */
-
-/**
- * Whether the caller's credential can read a table only the service role may.
- *
- * Deliberately a permission probe, not an identity check: it asks what the
- * caller is allowed to do rather than what they claim to be.
- */
-async function hasServiceRole(request: Request): Promise<boolean> {
-	const authorization = request.headers.get('Authorization');
-	const url = Deno.env.get('SUPABASE_URL');
-	if (!authorization || !url) return false;
-
-	const token = authorization.replace('Bearer ', '');
-
-	const asCaller = createClient(url, token, {
-		global: { headers: { Authorization: authorization } },
-		auth: { autoRefreshToken: false, persistSession: false }
-	});
-
-	/**
-	 * `head: true` fetches no rows — only whether the read was permitted. An
-	 * empty table and a forbidden table are distinguished by the error, not by
-	 * the row count.
-	 */
-	const { error } = await asCaller
-		.from('platform_wallet')
-		.select('id', { head: true, count: 'exact' });
-
-	return !error;
-}
 
 Deno.serve(async (request: Request) => {
 	const refusal = guardRequest(request);

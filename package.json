@@ -25,16 +25,20 @@
 		"db:types:local": "supabase gen types typescript --local --schema public > src/lib/supabase/database.types.ts",
 		"fn:serve": "supabase functions serve",
 		"fn:deploy": "supabase functions deploy",
-		"setup:platform-wallet": "node --env-file=.env -e \"const u=process.env.PUBLIC_SUPABASE_URL,k=process.env.SUPABASE_SERVICE_ROLE_KEY;fetch(u+'/functions/v1/setup_platform_wallet',{method:'POST',headers:{Authorization:'Bearer '+k,'Content-Type':'application/json'},body:'{}'}).then(r=>r.text()).then(t=>console.log(t))\""
+		"setup:platform-wallet": "node --env-file=.env scripts/invoke-function.mjs setup_platform_wallet",
+		"setup:charity-wallets": "node --env-file=.env scripts/setup-charity-wallets.mjs",
+		"run:process-commitments": "node --env-file=.env scripts/invoke-function.mjs process_commitments"
 	},
 	"dependencies": {
 		"@supabase/ssr": "0.12.7",
-		"@supabase/supabase-js": "2.117.2"
+		"@supabase/supabase-js": "2.117.2",
+		"qrcode": "1.5.4"
 	},
 	"devDependencies": {
 		"@sveltejs/adapter-vercel": "7.0.0",
 		"@sveltejs/kit": "3.0.0",
 		"@sveltejs/vite-plugin-svelte": "7.3.1",
+		"@types/qrcode": "1.5.6",
 		"supabase": "2.119.0",
 		"svelte": "5.57.1",
 		"svelte-check": "4.7.6",

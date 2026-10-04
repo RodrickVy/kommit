@@ -90,3 +90,24 @@ export function formatTimeOfDay(value: string): string {
 		minute: '2-digit'
 	}).format(anchor);
 }
+
+/** Lamports per SOL. Solana's own constant, restated so the app needs no SDK to show a balance. */
+export const LAMPORTS_PER_SOL = 1_000_000_000;
+
+/**
+ * Formats a lamport amount as SOL.
+ *
+ * Four decimal places. Two is not enough: a commitment stake and a network fee
+ * both live below a hundredth of a SOL, so rounding to cents would display a
+ * real balance as 0.00 and a real fee as free.
+ *
+ * @param lamports The amount, or null when the chain could not be reached.
+ * @returns A formatted figure, or an em dash — never "0" for an unknown
+ *          balance. "Solana is unavailable" and "this wallet is empty" lead to
+ *          opposite decisions, so they must not look alike.
+ */
+export function formatSol(lamports: number | null): string {
+	if (lamports === null) return '—';
+
+	return `${(lamports / LAMPORTS_PER_SOL).toFixed(4)} SOL`;
+}

@@ -63,7 +63,9 @@ export type Database = {
           is_active: boolean
           logo_path: string | null
           name: string
+          short_name: string | null
           updated_at: string
+          website_url: string | null
         }
         Insert: {
           created_at?: string
@@ -72,7 +74,9 @@ export type Database = {
           is_active?: boolean
           logo_path?: string | null
           name: string
+          short_name?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Update: {
           created_at?: string
@@ -81,9 +85,62 @@ export type Database = {
           is_active?: boolean
           logo_path?: string | null
           name?: string
+          short_name?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Relationships: []
+      }
+      check_ins: {
+        Row: {
+          commitment_id: string
+          created_at: string
+          distance_metres: number
+          id: string
+          is_verified: boolean
+          latitude: number
+          longitude: number
+          profile_id: string
+          role: Database["public"]["Enums"]["commitment_party"]
+        }
+        Insert: {
+          commitment_id: string
+          created_at?: string
+          distance_metres: number
+          id?: string
+          is_verified: boolean
+          latitude: number
+          longitude: number
+          profile_id: string
+          role: Database["public"]["Enums"]["commitment_party"]
+        }
+        Update: {
+          commitment_id?: string
+          created_at?: string
+          distance_metres?: number
+          id?: string
+          is_verified?: boolean
+          latitude?: number
+          longitude?: number
+          profile_id?: string
+          role?: Database["public"]["Enums"]["commitment_party"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "check_ins_commitment_id_fkey"
+            columns: ["commitment_id"]
+            isOneToOne: false
+            referencedRelation: "commitments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "check_ins_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       commitment_events: {
         Row: {
@@ -390,6 +447,7 @@ export type Database = {
           max_commitment_fee_cents: number
           min_commitment_fee_cents: number
           minimum_acceptance_lead_hours: number
+          qr_token_expiry_minutes: number
           request_expiry_hours: number
           sol_price_cents: number
           updated_at: string
@@ -410,6 +468,7 @@ export type Database = {
           max_commitment_fee_cents: number
           min_commitment_fee_cents: number
           minimum_acceptance_lead_hours: number
+          qr_token_expiry_minutes?: number
           request_expiry_hours: number
           sol_price_cents?: number
           updated_at?: string
@@ -430,6 +489,7 @@ export type Database = {
           max_commitment_fee_cents?: number
           min_commitment_fee_cents?: number
           minimum_acceptance_lead_hours?: number
+          qr_token_expiry_minutes?: number
           request_expiry_hours?: number
           sol_price_cents?: number
           updated_at?: string
@@ -527,6 +587,152 @@ export type Database = {
           },
         ]
       }
+      meetup_verifications: {
+        Row: {
+          commitment_id: string
+          displayed_by_profile_id: string
+          id: string
+          qr_token_id: string
+          scanned_by_profile_id: string
+          verified_at: string
+        }
+        Insert: {
+          commitment_id: string
+          displayed_by_profile_id: string
+          id?: string
+          qr_token_id: string
+          scanned_by_profile_id: string
+          verified_at?: string
+        }
+        Update: {
+          commitment_id?: string
+          displayed_by_profile_id?: string
+          id?: string
+          qr_token_id?: string
+          scanned_by_profile_id?: string
+          verified_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meetup_verifications_commitment_id_fkey"
+            columns: ["commitment_id"]
+            isOneToOne: true
+            referencedRelation: "commitments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_verifications_displayed_by_profile_id_fkey"
+            columns: ["displayed_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_verifications_qr_token_id_fkey"
+            columns: ["qr_token_id"]
+            isOneToOne: false
+            referencedRelation: "qr_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meetup_verifications_scanned_by_profile_id_fkey"
+            columns: ["scanned_by_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          amount_lamports: number
+          buyer_id: string
+          commitment_id: string
+          completed_at: string | null
+          created_at: string
+          failure_reason: string | null
+          id: string
+          listing_id: string
+          qr_token_id: string | null
+          rate_source: string
+          seller_id: string
+          sol_price_cents: number
+          solana_signature: string | null
+          status: Database["public"]["Enums"]["payment_status"]
+        }
+        Insert: {
+          amount_cents: number
+          amount_lamports: number
+          buyer_id: string
+          commitment_id: string
+          completed_at?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          listing_id: string
+          qr_token_id?: string | null
+          rate_source: string
+          seller_id: string
+          sol_price_cents: number
+          solana_signature?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+        }
+        Update: {
+          amount_cents?: number
+          amount_lamports?: number
+          buyer_id?: string
+          commitment_id?: string
+          completed_at?: string | null
+          created_at?: string
+          failure_reason?: string | null
+          id?: string
+          listing_id?: string
+          qr_token_id?: string | null
+          rate_source?: string
+          seller_id?: string
+          sol_price_cents?: number
+          solana_signature?: string | null
+          status?: Database["public"]["Enums"]["payment_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_commitment_id_fkey"
+            columns: ["commitment_id"]
+            isOneToOne: false
+            referencedRelation: "commitments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_qr_token_id_fkey"
+            columns: ["qr_token_id"]
+            isOneToOne: false
+            referencedRelation: "qr_tokens"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_wallet: {
         Row: {
           created_at: string
@@ -561,6 +767,7 @@ export type Database = {
           display_name: string
           email_receipts_enabled: boolean
           id: string
+          is_admin: boolean
           last_vote: string | null
           last_vote_choice: string | null
           reputation: number | null
@@ -579,6 +786,7 @@ export type Database = {
           display_name: string
           email_receipts_enabled?: boolean
           id: string
+          is_admin?: boolean
           last_vote?: string | null
           last_vote_choice?: string | null
           reputation?: number | null
@@ -597,6 +805,7 @@ export type Database = {
           display_name?: string
           email_receipts_enabled?: boolean
           id?: string
+          is_admin?: boolean
           last_vote?: string | null
           last_vote_choice?: string | null
           reputation?: number | null
@@ -609,6 +818,67 @@ export type Database = {
             columns: ["last_vote_choice"]
             isOneToOne: false
             referencedRelation: "charities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      qr_tokens: {
+        Row: {
+          commitment_id: string
+          consumed_at: string | null
+          consumed_by: string | null
+          expires_at: string
+          id: string
+          issued_at: string
+          issued_by: string
+          purpose: Database["public"]["Enums"]["qr_purpose"]
+          revoked_at: string | null
+          token_hash: string
+        }
+        Insert: {
+          commitment_id: string
+          consumed_at?: string | null
+          consumed_by?: string | null
+          expires_at: string
+          id?: string
+          issued_at?: string
+          issued_by: string
+          purpose: Database["public"]["Enums"]["qr_purpose"]
+          revoked_at?: string | null
+          token_hash: string
+        }
+        Update: {
+          commitment_id?: string
+          consumed_at?: string | null
+          consumed_by?: string | null
+          expires_at?: string
+          id?: string
+          issued_at?: string
+          issued_by?: string
+          purpose?: Database["public"]["Enums"]["qr_purpose"]
+          revoked_at?: string | null
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "qr_tokens_commitment_id_fkey"
+            columns: ["commitment_id"]
+            isOneToOne: false
+            referencedRelation: "commitments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_tokens_consumed_by_fkey"
+            columns: ["consumed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "qr_tokens_issued_by_fkey"
+            columns: ["issued_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -767,6 +1037,8 @@ export type Database = {
         | "completed"
       listing_condition: "new" | "used_like_new" | "used_good" | "used_fair"
       listing_status: "draft" | "active" | "reserved" | "sold" | "withdrawn"
+      payment_status: "pending" | "completed" | "failed"
+      qr_purpose: "meetup_verification" | "purchase"
       wallet_transaction_status: "pending" | "completed" | "failed"
       wallet_transaction_type:
         | "deposit"
@@ -933,6 +1205,8 @@ export const Constants = {
       ],
       listing_condition: ["new", "used_like_new", "used_good", "used_fair"],
       listing_status: ["draft", "active", "reserved", "sold", "withdrawn"],
+      payment_status: ["pending", "completed", "failed"],
+      qr_purpose: ["meetup_verification", "purchase"],
       wallet_transaction_status: ["pending", "completed", "failed"],
       wallet_transaction_type: [
         "deposit",
