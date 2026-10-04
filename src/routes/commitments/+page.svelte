@@ -4,6 +4,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
+	import TabBar from '#lib/components/ui/TabBar.svelte';
 	import { formatPrice } from '#lib/format';
 	import { COMMITMENT_STATUS_LABELS, statusTone } from '#lib/commitments/labels';
 	import { ROLE_FILTERS, SORTS, STATUS_FILTERS } from '#lib/commitments/list-view';
@@ -17,10 +18,23 @@
 	/** Whether anything other than the default view is selected. */
 	const filtered = $derived(data.view.status !== 'all' || data.view.role !== 'all');
 
-	/** Each change applies at once; the form is a plain GET, so it also works without JavaScript. */
-	function apply(event: Event) {
-		(event.currentTarget as HTMLSelectElement).form?.requestSubmit();
-	}
+	const statusTabs = $derived(
+		Object.entries(STATUS_FILTERS).map(([key, option]) => ({
+			key,
+			label: key === 'all' ? 'All' : key === 'closed' ? 'Did not happen' : option.label.replace(/ \(.*\)$/, ''),
+			count: data.view.counts[key as keyof typeof STATUS_FILTERS]
+		}))
+	);
+
+	const roleTabs = Object.entries(ROLE_FILTERS).map(([key, label]) => ({
+		key,
+		label: key === 'all' ? 'Buying & selling' : label
+	}));
+
+	const sortTabs = Object.entries(SORTS).map(([key, option]) => ({
+		key,
+		label: option.label.replace('Meetup date, ', 'Meetup ')
+	}));
 
 	/** Shown in the viewer's own timezone — both parties mean the same instant. */
 	function when(iso: string): string {
@@ -43,36 +57,30 @@
 	description="Meetups you have agreed to, as a buyer and as a seller."
 />
 
-<form method="GET" class="controls" data-sveltekit-keepfocus data-sveltekit-noscroll>
-	<label class="control">
-		<span class="control-label">Sort</span>
-		<select name="sort" value={data.view.sort} onchange={apply}>
-			{#each Object.entries(SORTS) as [key, option] (key)}
-				<option value={key}>{option.label}</option>
-			{/each}
-		</select>
-	</label>
-
-	<label class="control">
-		<span class="control-label">Status</span>
-		<select name="status" value={data.view.status} onchange={apply}>
-			{#each Object.entries(STATUS_FILTERS) as [key, option] (key)}
-				<option value={key}>{option.label}</option>
-			{/each}
-		</select>
-	</label>
-
-	<label class="control">
-		<span class="control-label">Role</span>
-		<select name="role" value={data.view.role} onchange={apply}>
-			{#each Object.entries(ROLE_FILTERS) as [key, label] (key)}
-				<option value={key}>{label}</option>
-			{/each}
-		</select>
-	</label>
-
-	<noscript><Button type="submit" variant="secondary" size="sm">Apply</Button></noscript>
-</form>
+<div class="tabs">
+	<TabBar
+		param="status"
+		tabs={statusTabs}
+		active={data.view.status}
+		label="Filter by status"
+	/>
+	<div class="secondary">
+		<TabBar
+			param="role"
+			tabs={roleTabs}
+			active={data.view.role}
+			label="Filter by role"
+			variant="secondary"
+		/>
+		<TabBar
+			param="sort"
+			tabs={sortTabs}
+			active={data.view.sort}
+			label="Sort commitments"
+			variant="secondary"
+		/>
+	</div>
+</div>
 
 {#if data.loadError}
 	<Alert tone="error">{data.loadError}</Alert>
@@ -140,24 +148,27 @@
 {/if}
 
 <style>
-	.controls {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
-		gap: var(--k-space-3);
-		margin-bottom: var(--k-space-4);
-	}
-
-	.control {
+	.tabs {
 		display: grid;
 		gap: var(--k-space-1);
+		margin-bottom: var(--k-space-5);
 	}
 
-	.control-label {
-		color: var(--k-text-subtle);
-		font-size: var(--k-text-xs);
-		letter-spacing: var(--k-tracking-wide);
-		text-transform: uppercase;
+	/* Role and sort share a row when there is room. */
+	.secondary {
+		display: flex;
+		flex-wrap: wrap;
+		justify-content: space-between;
+		gap: var(--k-space-1) var(--k-space-4);
 	}
+
+	.secondary > :global(*) {
+		min-width: 0;
+		max-width: 100%;
+	}
+
+
+
 
 	.list {
 		display: grid;

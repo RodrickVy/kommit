@@ -1,3 +1,5 @@
+import { CONDITION_ORDER, type ListingCondition } from '#lib/listings/labels';
+import { DISCOVER_SORTS, MAX_QUERY_LENGTH, type DiscoverSort } from '#lib/listings/discover-view';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -37,18 +39,46 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	 *
 	 * `count: 'exact'` is what makes a "page 2 of 5" control possible at all.
 	 */
-	const { data, error, count } = await locals.supabase
+	/** Search, condition and sort from the query string; anything unknown falls back. */
+	const q = (url.searchParams.get('q') ?? '').trim().slice(0, MAX_QUERY_LENGTH);
+	const conditionParam = url.searchParams.get('condition') ?? 'all';
+	const condition = (CONDITION_ORDER as readonly string[]).includes(conditionParam)
+		? (conditionParam as ListingCondition)
+		: 'all';
+	const sortParam = url.searchParams.get('sort') ?? 'newest';
+	const sort: DiscoverSort = sortParam in DISCOVER_SORTS ? (sortParam as DiscoverSort) : 'newest';
+
+	let query = locals.supabase
 		.from('listings')
 		.select('id, title, price_cents, condition, status, listing_images(storage_path)', {
 			count: 'exact'
 		})
 		.eq('status', 'active')
-		.eq('listing_images.position', 0)
+		.eq('listing_images.position', 0);
+
+	if (condition !== 'all') query = query.eq('condition', condition);
+
+	if (q) {
+		/**
+		 * Matches the title or the description. LIKE wildcards in the input are
+		 * escaped so they are searched for literally, and the characters that
+		 * delimit a PostgREST `or` filter are dropped rather than trusted.
+		 */
+		const term = q.replace(/[,()"\\]/g, ' ').replace(/[%_]/g, (c) => `\\${c}`);
+		query = query.or(`title.ilike.%${term}%,description.ilike.%${term}%`);
+	}
+
+	const { column, ascending } = DISCOVER_SORTS[sort];
+
+	const { data, error, count } = await query
+		.order(column, { ascending })
 		.order('created_at', { ascending: false })
 		.range(from, to);
 
+	const view = { q, condition, sort };
+
 	if (error) {
-		return { listings: [], page, pageCount: 1, total: 0, loadError: 'Listings could not be loaded.' };
+		return { listings: [], page, pageCount: 1, total: 0, view, loadError: 'Listings could not be loaded.' };
 	}
 
 	const total = count ?? 0;
@@ -59,6 +89,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		/** At least 1, so an empty marketplace still reads as "page 1 of 1". */
 		pageCount: Math.max(1, Math.ceil(total / PAGE_SIZE)),
 		total,
+		view,
 		loadError: null
 	};
 };

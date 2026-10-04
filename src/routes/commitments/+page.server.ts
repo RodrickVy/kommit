@@ -41,13 +41,32 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	else if (role === 'selling') query = query.eq('seller_id', user.id);
 	else query = query.or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
 
+	/**
+	 * Counts for each status tab, within the chosen role. A second, tiny query
+	 * (status only) so the badges stay right whichever tab is open.
+	 */
+	let countQuery = locals.supabase.from('commitments').select('status');
+	if (role === 'buying') countQuery = countQuery.eq('buyer_id', user.id);
+	else if (role === 'selling') countQuery = countQuery.eq('seller_id', user.id);
+	else countQuery = countQuery.or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
+
+	const { data: allStatuses } = await countQuery;
+	const counts = Object.fromEntries(
+		Object.entries(STATUS_FILTERS).map(([key, option]) => [
+			key,
+			(allStatuses ?? []).filter(
+				(row) => option.statuses === null || (option.statuses as readonly string[]).includes(row.status)
+			).length
+		])
+	) as Record<StatusKey, number>;
+
 	const statuses = STATUS_FILTERS[status].statuses;
 	if (statuses) query = query.in('status', [...statuses]);
 
 	const { column, ascending } = SORTS[sort];
 	const { data, error } = await query.order(column, { ascending });
 
-	const view = { sort, status, role };
+	const view = { sort, status, role, counts };
 
 	if (error) {
 		return { user, commitments: [], view, loadError: 'Your commitments could not be loaded.' };

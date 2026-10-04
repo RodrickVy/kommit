@@ -1,214 +1,343 @@
 <script lang="ts">
+	import { page } from '$app/state';
+	import ListingCard from '#lib/components/listings/ListingCard.svelte';
+	import Alert from '#lib/components/ui/Alert.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
-	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import WalletBalance from '#lib/components/wallet/WalletBalance.svelte';
 	import type { PageProps } from './$types';
 
 	/**
 	 * Home — `/`.
 	 *
-	 * This is the application's root route. There is no `/home`: the home
-	 * page IS `/`, so there is no redirect to pay for and only one URL that
-	 * can ever represent it.
-	 *
-	 * SCAFFOLDING — the two panels below report the state of the shell so the
-	 * setup can be verified in a browser. They should be replaced wholesale
-	 * when the real home page is designed; the diagnostic belongs in the
-	 * shell's first commit, not in the product.
+	 * What kommitly is, the newest listings as a sliding row, and — once signed
+	 * in — the wallet balance, since funds decide whether a meetup can be
+	 * requested at all.
 	 */
-
 	let { data }: PageProps = $props();
+
+	const signedIn = $derived(page.data.user != null);
+
+	let track = $state<HTMLUListElement>();
+	let atStart = $state(true);
+	let atEnd = $state(false);
+
+	/** Which arrows make sense, recomputed as the row scrolls or resizes. */
+	function updateEdges() {
+		if (!track) return;
+		atStart = track.scrollLeft <= 4;
+		atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
+	}
+
+	/** One "page" of cards at a time; scroll-snap lines the result up. */
+	function slide(direction: 1 | -1) {
+		track?.scrollBy({ left: direction * track.clientWidth * 0.9, behavior: 'smooth' });
+	}
+
+	$effect(() => {
+		void data.listings;
+		updateEdges();
+	});
 </script>
 
+<svelte:window onresize={updateEdges} />
+
 <svelte:head>
-	<title>kommitly</title>
-	<meta name="description" content="kommitly" />
+	<title>kommitly — local meetups people actually show up to</title>
+	<meta
+		name="description"
+		content="Buy and sell locally. Both sides put down a refundable $2 commitment, so everyone shows up."
+	/>
 </svelte:head>
 
-<PageHeader
-	title="kommitly"
-	description="Application shell. Routing, the design system and the Supabase connection are in place; features are built from here."
-/>
-
-<!--
-	A local snippet, because the same label/value row is rendered several
-	times below. Defining it once here is the right scope for a pattern used
-	only on this page — a shared component would be premature until a second
-	page needs it.
--->
-{#snippet field(label: string, value: string, mono = false)}
-	<div class="field">
-		<dt>{label}</dt>
-		<dd class:mono>{value}</dd>
+<div class="intro">
+<section class="hero">
+	<h1>Local deals, backed by a promise to show up.</h1>
+	<p class="lede">
+		Buyer and seller each put down a refundable <strong>$2 commitment</strong>. Meet at
+		the agreed place, scan to confirm, and you both get it back. No-shows lose theirs
+		to charity.
+	</p>
+	<div class="hero-actions">
+		<Button href="/discover">Browse listings</Button>
+		{#if signedIn}
+			<Button href="/sell/create_listing" variant="secondary">Sell something</Button>
+		{:else}
+			<Button href="/join" variant="secondary">Create an account</Button>
+		{/if}
 	</div>
-{/snippet}
+</section>
 
 {#if data.wallet}
-	<!--
-		The first thing a signed-in user should see. Their balance decides what
-		they can actually do — a commitment cannot be requested without funds —
-		so it goes above the diagnostics rather than beside them.
-	-->
-	<div class="wallet">
+	<section class="wallet">
 		<WalletBalance wallet={data.wallet} />
 		<div class="wallet-actions">
-			<Button href="/wallet/fund_wallet">Add funds</Button>
-			<Button href="/wallet" variant="secondary">Wallet</Button>
+			<Button href="/wallet/fund_wallet" size="sm">Add funds</Button>
+			<Button href="/wallet" variant="secondary" size="sm">Wallet</Button>
 		</div>
-	</div>
+	</section>
 {:else if data.walletError}
 	<div class="wallet">
-		<Panel>
-			<h2 class="panel-title">Wallet</h2>
-			<p class="detail">{data.walletError}</p>
-		</Panel>
+		<Alert tone="error">{data.walletError}</Alert>
 	</div>
 {/if}
-
-<div class="panels">
-	<Panel>
-		<h2 class="panel-title">Connection</h2>
-
-		<!--
-			`data-ok` drives the colour, while the text states the outcome in
-			words. Colour is never the only carrier of meaning.
-		-->
-		<p class="status" data-ok={data.supabaseHealth.reachable}>
-			<span class="dot" aria-hidden="true"></span>
-			{data.supabaseHealth.reachable ? 'Supabase reachable' : 'Supabase unreachable'}
-		</p>
-
-		<p class="detail">{data.supabaseHealth.detail}</p>
-
-		<dl class="fields">
-			{@render field('Project', data.supabaseUrl, true)}
-			{@render field('Solana cluster', data.solanaNetwork, true)}
-		</dl>
-	</Panel>
-
-	<Panel>
-		<h2 class="panel-title">Session</h2>
-
-		{#if data.user}
-			<p class="detail">This request carries a verified session.</p>
-
-			<dl class="fields">
-				{@render field('Email', data.user.email ?? 'None on this account')}
-				{@render field('User ID', data.user.id, true)}
-				{@render field('Postgres role', data.user.role, true)}
-			</dl>
-
-			<div class="actions">
-				<Button href="/account" variant="secondary">Account</Button>
-			</div>
-		{:else}
-			<p class="detail">
-				No session on this request. Pages that need an account will be guarded
-				server-side once authentication is built.
-			</p>
-
-			<div class="actions">
-				<Button href="/join">Join</Button>
-				<Button href="/signin" variant="secondary">Sign in</Button>
-			</div>
-		{/if}
-	</Panel>
 </div>
 
+<section class="preview" aria-labelledby="preview-title">
+	<div class="preview-head">
+		<div>
+			<h2 id="preview-title">New on Discover</h2>
+			<p class="muted">The latest items, from sellers who commit to meeting.</p>
+		</div>
+		<div class="preview-controls">
+			{#if data.listings.length > 1}
+				<button
+					type="button"
+					class="arrow k-cut"
+					onclick={() => slide(-1)}
+					disabled={atStart}
+					aria-label="Previous listings">←</button
+				>
+				<button
+					type="button"
+					class="arrow k-cut"
+					onclick={() => slide(1)}
+					disabled={atEnd}
+					aria-label="Next listings">→</button
+				>
+			{/if}
+			<a class="see-all" href="/discover">See all</a>
+		</div>
+	</div>
+
+	{#if data.listingsError}
+		<Alert tone="error">{data.listingsError}</Alert>
+	{:else if data.listings.length === 0}
+		<Panel>
+			<p class="muted">
+				{#if signedIn}
+					Nothing listed yet. <a href="/sell/create_listing">List something</a> and it
+					will be the first thing buyers see.
+				{:else}
+					Nothing listed yet. <a href="/join">Create an account</a> to add the first one.
+				{/if}
+			</p>
+		</Panel>
+	{:else}
+		<!--
+			A native horizontal scroller with snap points: swipe on a phone, the
+			arrow buttons or a trackpad on a computer, and it never traps the
+			keyboard — every card is still an ordinary link in tab order.
+		-->
+		<ul class="track" role="list" bind:this={track} onscroll={updateEdges}>
+			{#each data.listings as listing (listing.id)}
+				<li class="slide">
+					<ListingCard
+						{listing}
+						imagePath={listing.listing_images[0]?.storage_path ?? null}
+						showRequest
+					/>
+				</li>
+			{/each}
+		</ul>
+	{/if}
+</section>
+
+<section class="steps" aria-labelledby="steps-title">
+	<h2 id="steps-title">How it works</h2>
+	<ol class="step-list">
+		<li>
+			<span class="step-number">1</span>
+			<h3>Request a meetup</h3>
+			<p>Pick a place and time the seller offers. You put down $2.</p>
+		</li>
+		<li>
+			<span class="step-number">2</span>
+			<h3>The seller commits</h3>
+			<p>When they accept, they put down $2 too. Now you are both on the hook.</p>
+		</li>
+		<li>
+			<span class="step-number">3</span>
+			<h3>Meet and scan</h3>
+			<p>Check in at the spot and scan the seller's code. Both commitments come back.</p>
+		</li>
+	</ol>
+</section>
+
 <style>
-	.wallet {
+	/* Intro and wallet side by side when there is room; stacked on a phone. */
+	.intro {
+		display: grid;
+		gap: var(--k-space-5);
+		align-items: start;
+		margin-bottom: var(--k-space-6);
+	}
+
+	@media (min-width: 60rem) {
+		.intro {
+			grid-template-columns: minmax(0, 1fr) 22rem;
+		}
+	}
+
+	.hero {
 		display: grid;
 		gap: var(--k-space-4);
-		margin-bottom: var(--k-space-5);
+		max-width: 46rem;
+		padding-block: var(--k-space-4) 0;
+	}
+
+	.hero h1 {
+		font-size: clamp(var(--k-text-2xl), 5vw, var(--k-text-3xl));
+		line-height: 1.15;
+	}
+
+	.lede {
+		color: var(--k-text-muted);
+		font-size: var(--k-text-lg);
+	}
+
+	.hero-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--k-space-2);
+	}
+
+	.wallet {
+		display: grid;
+		gap: var(--k-space-3);
+		max-width: 28rem;
 	}
 
 	.wallet-actions {
 		display: flex;
-		flex-wrap: wrap;
 		gap: var(--k-space-2);
 	}
 
-	.panels {
-		display: grid;
-		/* `auto-fit` plus `minmax` gives two columns where there is room and
-		   one where there is not, with no media query. 20rem is the narrowest
-		   a panel should be before its label/value rows start wrapping badly.
-
-		   The `min(20rem, 100%)` rather than a bare `20rem` matters: a plain
-		   fixed minimum is a floor the track cannot go below, so on a viewport
-		   narrower than 20rem the grid overflows instead of fitting. Wrapping
-		   it in `min()` caps that floor at the container's own width, so the
-		   track shrinks the rest of the way on a small phone. */
-		grid-template-columns: repeat(auto-fit, minmax(min(20rem, 100%), 1fr));
-		gap: var(--k-space-4);
+	.preview {
+		margin-bottom: var(--k-space-7);
 	}
 
-	.panel-title {
-		margin-bottom: var(--k-space-3);
-		font-size: var(--k-text-lg);
+	.preview-head {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: flex-end;
+		justify-content: space-between;
+		gap: var(--k-space-3);
+		margin-bottom: var(--k-space-4);
 	}
 
-	.status {
+	.preview-head h2,
+	.steps h2 {
+		font-size: var(--k-text-xl);
+	}
+
+	.muted {
+		color: var(--k-text-subtle);
+		font-size: var(--k-text-sm);
+	}
+
+	.preview-controls {
 		display: flex;
 		align-items: center;
 		gap: var(--k-space-2);
-		font-weight: 550;
 	}
 
-	.dot {
-		width: 0.5rem;
-		height: 0.5rem;
-		background-color: var(--k-danger);
+	.arrow {
+		width: 2.5rem;
+		height: 2.5rem;
+		padding: 0;
+		border: 0;
+		background-color: var(--k-surface-raised);
+		color: var(--k-text);
+		font-size: var(--k-text-lg);
+		cursor: pointer;
 	}
 
-	.status[data-ok='true'] .dot {
-		background-color: var(--k-success);
+	.arrow:hover:not(:disabled) {
+		background-color: var(--k-surface-sunken);
 	}
 
-	.detail {
-		margin-top: var(--k-space-2);
-		color: var(--k-text-muted);
-		font-size: var(--k-text-sm);
+	.arrow:focus-visible {
+		box-shadow: inset 0 0 0 2px var(--k-primary);
+		outline: none;
 	}
 
-	.fields {
-		display: grid;
-		gap: var(--k-space-3);
-		margin-top: var(--k-space-4);
-	}
-
-	.field {
-		display: grid;
-		gap: var(--k-space-1);
-	}
-
-	.field dt {
+	.arrow:disabled {
 		color: var(--k-text-subtle);
-		font-size: var(--k-text-xs);
-		/* Small-caps label treatment; the wide tracking is what keeps
-		   uppercase text legible at this size. */
-		text-transform: uppercase;
-		letter-spacing: var(--k-tracking-wide);
+		cursor: default;
+		opacity: 0.5;
 	}
 
-	.field dd {
-		margin: 0;
+	.see-all {
+		margin-left: var(--k-space-2);
 		font-size: var(--k-text-sm);
-		/* Identifiers and URLs are long and must not force the panel wider
-		   than its grid column. */
-		overflow-wrap: anywhere;
 	}
 
-	.mono {
-		font-family: var(--k-font-mono);
-		color: var(--k-text-muted);
+	.track {
+		display: grid;
+		grid-auto-flow: column;
+		grid-auto-columns: min(17rem, 78%);
+		gap: var(--k-space-4);
+		margin: 0;
+		padding-bottom: var(--k-space-3);
+		overflow-x: auto;
+		overscroll-behavior-x: contain;
+		scroll-snap-type: x mandatory;
+		scroll-padding-inline: 0;
+		scrollbar-width: thin;
 	}
 
-	.actions {
+	.slide {
 		display: flex;
-		flex-wrap: wrap;
+		scroll-snap-align: start;
+	}
+
+	.slide > :global(*) {
+		flex: 1;
+	}
+
+	.steps {
+		padding-top: var(--k-space-6);
+		border-top: var(--k-line-width) solid var(--k-line);
+	}
+
+	.step-list {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
+		gap: var(--k-space-4);
+		margin: var(--k-space-4) 0 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.step-list li {
+		display: grid;
 		gap: var(--k-space-2);
-		margin-top: var(--k-space-5);
+		align-content: start;
+	}
+
+	.step-number {
+		display: grid;
+		place-items: center;
+		width: 2rem;
+		height: 2rem;
+		background-color: var(--k-primary);
+		color: var(--k-on-primary);
+		font-weight: 700;
+	}
+
+	.step-list h3 {
+		font-size: var(--k-text-base);
+	}
+
+	.step-list p {
+		color: var(--k-text-muted);
+		font-size: var(--k-text-sm);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.track {
+			scroll-behavior: auto;
+		}
 	}
 </style>
