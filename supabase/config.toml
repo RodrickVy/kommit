@@ -1,3 +1,36 @@
+# ============================================================================
+# WARNING — DO NOT RUN `supabase config push` AGAINST THIS FILE YET
+# ============================================================================
+# This file is still largely the CLI's default scaffold. It does NOT describe
+# the hosted project's intended settings, and pushing it would overwrite them.
+#
+# As of 2026-10-04, `supabase config diff` reported 12 differences. Among them,
+# pushing would:
+#
+#   * DISABLE MULTI-FACTOR AUTHENTICATION
+#       auth.mfa.totp.enroll_enabled   remote true  -> local false
+#       auth.mfa.totp.verify_enabled   remote true  -> local false
+#
+#   * WEAKEN EMAIL ONE-TIME CODES
+#       auth.email.otp_length          remote 8     -> local 6
+#
+#   * change site_url, redirect URLs, pooler sizing and storage analytics
+#
+# None of those are deliberate decisions. They are template defaults that
+# happen to disagree with the project.
+#
+# Auth settings are therefore changed in the Supabase dashboard for now.
+#
+# To make this file authoritative — which is worth doing, since the schema is
+# already version controlled and auth configuration deserves the same — work
+# through `supabase config diff` and make each declared value match the
+# intended production setting deliberately, one at a time. Only then is
+# `config push` safe.
+#
+# `supabase db push` is unaffected and remains the correct way to apply
+# migrations. This warning is only about `config push`.
+# ============================================================================
+
 # For detailed configuration reference documentation, visit:
 # https://supabase.com/docs/guides/local-development/cli/config
 # A string used to distinguish different Supabase projects on the same host. Defaults to the
