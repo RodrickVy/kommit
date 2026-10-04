@@ -24,10 +24,17 @@
 	<Alert tone="error">{data.loadError}</Alert>
 {:else if data.listings.length === 0}
 	<Panel>
-		<p class="empty">
-			Nothing listed yet. <a href="/join">Create an account</a> and you can add the
-			first one — sample listings are included if you want them.
-		</p>
+		{#if data.user}
+			<p class="empty">
+				Nothing listed yet. <a href="/sell/create_listing">List something</a> and it
+				will be the first thing buyers see here.
+			</p>
+		{:else}
+			<p class="empty">
+				Nothing listed yet. <a href="/join">Create an account</a> and you can add the
+				first one — sample listings are included if you want them.
+			</p>
+		{/if}
 	</Panel>
 {:else}
 	<div class="grid">

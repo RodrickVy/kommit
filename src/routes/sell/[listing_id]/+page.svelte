@@ -6,6 +6,7 @@
 	import ImageUploader from '#lib/components/listings/ImageUploader.svelte';
 	import MeetupSetup from '#lib/components/listings/MeetupSetup.svelte';
 	import RequestPanel from '#lib/components/commitments/RequestPanel.svelte';
+	import RequestDialog from '#lib/components/commitments/RequestDialog.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import { formatPrice, formatTimeOfDay } from '#lib/format';
@@ -74,6 +75,9 @@
 	{#snippet actions()}
 		{#if data.isOwner}
 			<Badge tone={statusTone}>{STATUS_LABELS[data.listing.status]}</Badge>
+		{:else}
+			<!-- The same request dialog as the Discover cards. -->
+			<RequestDialog listingId={data.listing.id} title={data.listing.title} />
 		{/if}
 	{/snippet}
 </PageHeader>
@@ -263,8 +267,14 @@
 				</dd>
 			</dl>
 
-			{#if !data.isOwner}
+			{#if data.isOwner}
+				<p class="owner-note">
+					Buyers see a <strong>Request a meetup</strong> button here. You cannot
+					request a meetup for your own listing.
+				</p>
+			{:else}
 				<div class="commit" id="request">
+					<h2 class="panel-title">Request a meetup</h2>
 					<RequestPanel
 						listingId={data.listing.id}
 						status={data.listing.status}
@@ -475,6 +485,12 @@
 
 
 
+
+	.owner-note {
+		margin-top: var(--k-space-5);
+		color: var(--k-text-subtle);
+		font-size: var(--k-text-sm);
+	}
 
 	.status-note {
 		color: var(--k-text-muted);
