@@ -192,17 +192,18 @@ enabled = true
 # in emails.
 # WHERE EMAIL LINKS GO WHEN NOTHING ELSE SAYS.
 #
-# Currently the dev server, which is correct while nobody has deployed.
-# IT MUST BECOME THE PRODUCTION DOMAIN BEFORE REAL USERS SIGN UP — otherwise
-# anyone who confirms an account is sent to a localhost address that only
-# exists on a developer's machine, and the link is dead for them.
+# The domain we own, deliberately — never a Vercel or localhost address.
+#
+# This is the fallback used whenever a requested redirect is not recognised,
+# so it has to be somewhere that works for a real person on a real device. A
+# localhost fallback would hand every production user a dead link, and a
+# *.vercel.app fallback would send them to a deployment URL that changes.
 #
 # The app passes an explicit `emailRedirectTo` built from the request origin,
 # so each environment normally produces its own correct link and this value is
-# only the fallback. But the fallback is exactly what gets used when an origin
-# is NOT in additional_redirect_urls below — so a missing entry there turns
-# into a link pointing at this value.
-site_url = "http://localhost:5173"
+# only reached when something has gone wrong. Making the wrong-case land on
+# the real site is the whole point.
+site_url = "https://kommitly.tech"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
@@ -213,13 +214,21 @@ site_url = "http://localhost:5173"
 # confirmation link that works perfectly in development and sends production
 # users to the wrong place.
 #
-# Before deploying, add:
-#   "https://<your-domain>/**"                  the production site
-#   "https://<vercel-project>-*.vercel.app/**"  preview deployments
+# The wildcard is scoped to `kommit-*` rather than `*.vercel.app`, which would
+# trust every project hosted on Vercel and not only ours. It covers the
+# current deployment and the per-branch preview URLs Vercel generates from the
+# same project name.
 #
-# Keep the pattern tight. "https://*.vercel.app/**" would trust every project
-# hosted on Vercel, not just yours.
-additional_redirect_urls = ["http://localhost:5173/**"]
+# `www` is listed as well as the bare domain: if the site ever answers on both,
+# a visitor who arrives via `www` would otherwise have their redirect silently
+# ignored and be sent to site_url instead.
+additional_redirect_urls = [
+  "https://kommitly.tech/**",
+  "https://www.kommitly.tech/**",
+  "https://kommit-delta.vercel.app/**",
+  "https://kommit-*.vercel.app/**",
+  "http://localhost:5173/**"
+]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
 # JWT issuer URL. If not set, defaults to auth.external_url.
