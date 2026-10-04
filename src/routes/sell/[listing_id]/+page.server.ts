@@ -15,7 +15,7 @@ import {
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Listing detail — `/sell/[listing_id]`.
+ * Listing detail, `/sell/[listing_id]`.
  *
  * Serves two audiences from one route, because one listing has one URL:
  *
@@ -36,7 +36,7 @@ const EXTENSION_BY_TYPE: Record<string, string> = {
 
 export const load: PageServerLoad = async ({ locals, params }) => {
 	/**
-	 * No guard here. A signed-out visitor may view an active listing — that is
+	 * No guard here. A signed-out visitor may view an active listing, that is
 	 * what Discover links to. Row Level Security is what stops them seeing
 	 * someone else's draft, and it returns no row rather than an error, which
 	 * surfaces below as a 404.
@@ -74,12 +74,12 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		.order('position', { ascending: true });
 
 	/**
-	 * Where and when this seller will meet, and — for anyone but the owner —
+	 * Where and when this seller will meet, and, for anyone but the owner,
 	 * the concrete times a buyer can pick. Shared with the Discover request
 	 * dialog so both offer exactly the same choices.
 	 */
 	const options = await loadRequestOptions(locals, listing.seller_id, !isOwner);
-	const { locations, availability, slots, stakeCents, minimumLeadHours } = options;
+	const { locations, availability, slots, stakeCents, fee, minimumLeadHours } = options;
 	let frozen = false;
 
 	if (isOwner) {
@@ -108,6 +108,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		conditions: CONDITION_ORDER,
 		slots,
 		stakeCents,
+		fee,
 		minimumLeadHours,
 		frozen,
 		signedIn: user !== null
@@ -156,7 +157,7 @@ export const actions: Actions = {
 	 * moves: a request is an offer to meet, and it only becomes an obligation
 	 * when the seller accepts.
 	 *
-	 * NOT DONE HERE, deliberately — see the migration:
+	 * NOT DONE HERE, deliberately, see the migration:
 	 *   * stake calculation. A flat $2.00 for both sides, owned by the Edge
 	 *     Function and `market_settings`.
 	 */
@@ -173,7 +174,7 @@ export const actions: Actions = {
 
 		/**
 		 * Delegated entirely to the Edge Function, which is the only thing that
-		 * can take the buyer's stake — the custodial signing key is a function
+		 * can take the buyer's stake, the custodial signing key is a function
 		 * secret and is deliberately unreachable from here.
 		 *
 		 * Nothing is written to `commitments` in this file any more. Doing both
@@ -191,7 +192,7 @@ export const actions: Actions = {
 
 		if (!result.ok) {
 			/**
-			 * Insufficient funds is not a failure the user should puzzle over —
+			 * Insufficient funds is not a failure the user should puzzle over,
 			 * it has an obvious next step, so the page is told to offer it.
 			 */
 			if (result.error.code === 'INSUFFICIENT_FUNDS') {
@@ -210,7 +211,7 @@ export const actions: Actions = {
 
 	/**
 	 * The seller's meetup locations and times, editable from their listing.
-	 * They belong to the seller, so only a signed-in user's own rows change —
+	 * They belong to the seller, so only a signed-in user's own rows change,
 	 * Row Level Security enforces it as well.
 	 */
 	addLocation: async ({ request, locals, url }) => {
@@ -284,7 +285,7 @@ export const actions: Actions = {
 	 *
 	 * One file per request on purpose. The client uploads several by calling
 	 * this repeatedly, which is what makes per-file progress and per-file
-	 * failure possible — a single batched request can only report "something
+	 * failure possible, a single batched request can only report "something
 	 * went wrong" for the whole set.
 	 */
 	uploadImage: async ({ request, locals, params, url }) => {
@@ -352,7 +353,7 @@ export const actions: Actions = {
 		if (insertError) {
 			/**
 			 * The file reached storage but has no row pointing at it, so it is
-			 * orphaned — invisible to the app and impossible to clean up later.
+			 * orphaned, invisible to the app and impossible to clean up later.
 			 * Remove it rather than leaving it behind.
 			 */
 			await locals.supabase.storage.from(PUBLIC_SUPABASE_LISTINGS_BUCKET).remove([storagePath]);
@@ -451,7 +452,7 @@ export const actions: Actions = {
 
 		/**
 		 * Storage files go first. Deleting the listing cascades to its image
-		 * rows, and once those are gone nothing records where the files were —
+		 * rows, and once those are gone nothing records where the files were,
 		 * so removing them afterwards would be impossible.
 		 */
 		const { data: images } = await locals.supabase

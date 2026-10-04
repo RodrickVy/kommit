@@ -8,7 +8,7 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Account — `/account`.
+	 * Account, `/account`.
 	 *
 	 * Identity, commitment record, and the seller settings that every listing
 	 * inherits: where this person will meet, and when they are free.
@@ -54,13 +54,13 @@
 			<dl class="pairs">
 				<div class="pair">
 					<dt>Display name</dt>
-					<dd>{data.profile?.display_name ?? '—'}</dd>
+					<dd>{data.profile?.display_name ?? 'Not set'}</dd>
 				</div>
 				<div class="pair">
 					<dt>Email</dt>
 					<!--
 						Shown to the account holder only. It is never exposed to another
-						user — it is not even stored on the profile row, which is
+						user, it is not even stored on the profile row, which is
 						world-readable.
 					-->
 					<dd>{data.user.email ?? 'None on this account'}</dd>
@@ -79,7 +79,7 @@
 							     from a genuine low score. -->
 							<span class="muted">Not calculated yet</span>
 						{:else}
-							{data.profile.reputation}
+							{Number(data.profile.reputation).toFixed(3)}
 						{/if}
 					</dd>
 				</div>

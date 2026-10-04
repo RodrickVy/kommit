@@ -5,7 +5,7 @@ import { transferFunds } from '../_shared/transfer.ts';
 import { getPlatformWallet, getUserWallet } from '../_shared/wallets.ts';
 
 /**
- * respond_to_commitment — the seller accepts or declines a pending request.
+ * respond_to_commitment, the seller accepts or declines a pending request.
  *
  *   POST /respond_to_commitment
  *   { "commitment_id": "<uuid>", "action": "accept" | "decline" }
@@ -76,8 +76,8 @@ Deno.serve(async (request: Request) => {
 
 		/**
 		 * The buyer's stake must already be held. A pending request without one
-		 * should not exist — request_commitment removes any whose transfer failed
-		 * — so this is a consistency check rather than an expected path.
+		 * should not exist, request_commitment removes any whose transfer failed
+		 *, so this is a consistency check rather than an expected path.
 		 * Accepting against it would commit a seller with nothing on the other
 		 * side.
 		 */
@@ -104,7 +104,7 @@ Deno.serve(async (request: Request) => {
 
 			if (!settled.ok) {
 				/**
-				 * The decline stands — the seller answered, the request is closed —
+				 * The decline stands, the seller answered, the request is closed,
 				 * but the refund has not landed. Reported honestly rather than
 				 * claiming the money is back, so the scheduled resolver can retry it
 				 * under the same idempotency key without double-paying.
@@ -161,7 +161,7 @@ async function accept(
 	 * The stake moves BEFORE the status changes.
 	 *
 	 * If the transfer fails, the commitment stays pending and the buyer's stake
-	 * stays held — a recoverable state the seller can retry from. The reverse
+	 * stays held, a recoverable state the seller can retry from. The reverse
 	 * order would produce an active commitment that only one party had paid
 	 * into, and there is no safe way back from that: the buyer would be exposed
 	 * to a no-show penalty against a seller with nothing at risk.
@@ -188,8 +188,8 @@ async function accept(
 
 	/**
 	 * `.eq('status', 'pending')` makes this a compare-and-set. Two concurrent
-	 * acceptances both transfer under the same idempotency key — so only one
-	 * payment occurs — and only one of them finds the row still pending.
+	 * acceptances both transfer under the same idempotency key, so only one
+	 * payment occurs, and only one of them finds the row still pending.
 	 */
 	const accepted = await db
 		.from('commitments')

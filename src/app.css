@@ -56,6 +56,13 @@
 	--k-teal-800: #084e45;
 	--k-teal-900: #06332e;
 
+	/* Solana — the network's own brand colours, used only for the "backed by
+	   Solana" band so it reads as theirs rather than ours. Decorative: text on
+	   them is always white on the deep ink below, never on the bright ends. */
+	--k-solana-purple: #9945ff;
+	--k-solana-green: #14f195;
+	--k-solana-ink: #120d24;
+
 	/* Ink — the neutral scale, lightest first. Cool-shifted so it sits with
 	   teal rather than fighting it. 0 is the page, 950 is primary text. */
 	--k-ink-0: #ffffff;
@@ -141,6 +148,16 @@
 	   both on a white panel and on a teal-filled button, and a teal ring
 	   would disappear into the very control it is marking. */
 	--k-focus: var(--k-ink-950);
+
+	/* The Solana band. Dark in both themes on purpose: it is a statement
+	   strip that should stand apart from the page around it. */
+	--k-band-bg: var(--k-solana-ink);
+	--k-band-bg-from: #1d1145;
+	--k-band-bg-to: #082a24;
+	--k-band-text: #ffffff;
+	--k-band-text-muted: #c9c3e6;
+	--k-band-accent-from: var(--k-solana-purple);
+	--k-band-accent-to: var(--k-solana-green);
 }
 
 /* --------------------------------------------------------------------------

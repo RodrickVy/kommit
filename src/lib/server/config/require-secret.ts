@@ -8,7 +8,7 @@
  * machine.
  *
  * The consequence is that whichever feature needs a secret has to demand it.
- * This function is that demand — it turns "possibly absent" into "present, or
+ * This function is that demand, it turns "possibly absent" into "present, or
  * a clear error naming exactly what is missing".
  *
  * @param name  The variable name, exactly as it appears in `.env.example`.

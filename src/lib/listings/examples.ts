@@ -5,7 +5,7 @@
  * bulk seeding drops five listings on someone who has not yet seen what a
  * listing is, and they then have to work out which rows are theirs and which
  * were invented for them. Filling one form on request keeps the user in
- * control — they see exactly what is being written, can edit any of it before
+ * control, they see exactly what is being written, can edit any of it before
  * saving, and nothing appears that they did not ask for.
  *
  * The listing examples are plain data used CLIENT-SIDE to populate form
@@ -67,22 +67,22 @@ export const LISTING_EXAMPLES: readonly ListingExample[] = [
 ];
 
 /**
- * Public meeting places in Vancouver — busy, well lit, easy to describe to a
+ * Public meeting places in Vancouver, busy, well lit, easy to describe to a
  * stranger. Never a home address, which is the point of the whole feature.
  */
 export const LOCATION_EXAMPLES = [
 	{
-		name: 'Vancouver Public Library, Central Branch — main entrance',
+		name: 'Vancouver Public Library, Central Branch, main entrance',
 		latitude: 49.2796,
 		longitude: -123.1156
 	},
 	{
-		name: 'Metrotown Station — bus loop',
+		name: 'Metrotown Station, bus loop',
 		latitude: 49.2258,
 		longitude: -122.9999
 	},
 	{
-		name: 'Olympic Village Station — plaza outside the north exit',
+		name: 'Olympic Village Station, plaza outside the north exit',
 		latitude: 49.2663,
 		longitude: -123.1156
 	}

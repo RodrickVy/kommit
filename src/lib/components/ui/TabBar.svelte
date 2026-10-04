@@ -2,7 +2,7 @@
 	import { page } from '$app/state';
 
 	/**
-	 * TabBar — a Material-style tab bar that filters a list through the URL.
+	 * TabBar, a Material-style tab bar that filters a list through the URL.
 	 *
 	 * Each tab is a real link that sets one query parameter and keeps the rest,
 	 * so a view can be refreshed, bookmarked and shared, and works without
@@ -19,7 +19,7 @@
 		/** Accessible name for the bar, e.g. "Filter by status". */
 		label: string;
 		variant?: 'primary' | 'secondary';
-		/** Parameters to drop when a tab changes — typically `page`. */
+		/** Parameters to drop when a tab changes, typically `page`. */
 		reset?: readonly string[];
 	}
 

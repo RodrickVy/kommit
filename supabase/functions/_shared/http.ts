@@ -71,7 +71,7 @@ export function guardRequest(request: Request): Response | null {
 
 	/**
 	 * Supabase verifies the JWT before the function runs, so this only catches
-	 * a missing header — but a missing header here means something is calling
+	 * a missing header, but a missing header here means something is calling
 	 * the function wrongly, and a clear 401 is more useful than a crash on an
 	 * undefined user.
 	 */

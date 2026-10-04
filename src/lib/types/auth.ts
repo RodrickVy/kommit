@@ -24,7 +24,7 @@
  *
  * The existence of a `SessionUser` is the app's proof of authentication. It is
  * only ever produced by `verifyUser()`, which validates the access token's
- * signature — never by reading a cookie or trusting a client-supplied value.
+ * signature, never by reading a cookie or trusting a client-supplied value.
  */
 export interface SessionUser {
 	/**
@@ -36,7 +36,7 @@ export interface SessionUser {
 	readonly id: string;
 
 	/**
-	 * The user's email address, or `null` when the account has none — which is
+	 * The user's email address, or `null` when the account has none, which is
 	 * the case for phone sign-in and anonymous sessions.
 	 */
 	readonly email: string | null;

@@ -3,7 +3,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 
 	/**
-	 * "I'm here" — asks the browser where it is, then submits.
+	 * "I'm here", asks the browser where it is, then submits.
 	 *
 	 * WHY THIS NEEDS JAVASCRIPT, AND WHY THAT IS NOT A REGRESSION
 	 * -----------------------------------------------------------
@@ -13,7 +13,7 @@
 	 * no server-side equivalent and no HTML control that produces coordinates.
 	 *
 	 * So the button asks first and submits second, carrying the result in hidden
-	 * fields. With scripting off the button does nothing, which is honest —
+	 * fields. With scripting off the button does nothing, which is honest,
 	 * there is nothing it could do.
 	 *
 	 * THE POSITION IS NOT TRUSTED. These values are user-supplied and trivially
@@ -71,7 +71,7 @@
 			case error.POSITION_UNAVAILABLE:
 				return 'Your device could not determine where it is. Step outside or into the open and try again.';
 			case error.TIMEOUT:
-				return 'Finding your location took too long. Try again — it is usually quicker on the second attempt.';
+				return 'Finding your location took too long. Try again, it is usually quicker on the second attempt.';
 			default:
 				return 'Your location could not be read. Try again.';
 		}
@@ -99,7 +99,7 @@
 
 			/**
 			 * `requestSubmit`, not `submit`. The latter bypasses the submit event,
-			 * which is what `use:enhance` listens to — so the page would do a full
+			 * which is what `use:enhance` listens to, so the page would do a full
 			 * reload and lose the progressive-enhancement behaviour.
 			 */
 			form.requestSubmit();

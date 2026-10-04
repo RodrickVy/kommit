@@ -33,6 +33,7 @@ export const GET: RequestHandler = async ({ locals, params }) => {
 		hasAvailability: options.availability.length > 0,
 		slots: options.slots,
 		stakeCents: options.stakeCents,
+		fee: options.fee,
 		minimumLeadHours: options.minimumLeadHours
 	});
 };

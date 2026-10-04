@@ -4,7 +4,7 @@
 	import BrandMark from '#lib/components/layout/BrandMark.svelte';
 
 	/**
-	 * AppFooter — brand, the site's links, and which Solana network is in use.
+	 * AppFooter, brand, the site's links, and which Solana network is in use.
 	 *
 	 * The network notice is not decoration: the same interface looks identical
 	 * whether it is moving test tokens on devnet or real value on mainnet, and a
@@ -72,7 +72,7 @@
 				Solana
 				<span class="cluster">{PUBLIC_SOLANA_NETWORK}</span>
 				{#if !isLiveNetwork}
-					<span>— test network, no real value</span>
+					<span>· test network, no real value</span>
 				{/if}
 			</p>
 		</div>

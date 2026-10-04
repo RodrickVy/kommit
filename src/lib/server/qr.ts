@@ -4,7 +4,7 @@ import QRCode from 'qrcode';
  * Rendering a QR code as inline SVG, on the server.
  *
  * SVG rather than a PNG data URI: it is smaller, it scales to any screen
- * without blurring, and it needs no canvas — so the whole code is produced
+ * without blurring, and it needs no canvas, so the whole code is produced
  * during server rendering and the browser receives markup it can simply
  * display. No client-side JavaScript is involved in showing a QR at all.
  *
@@ -23,7 +23,7 @@ import QRCode from 'qrcode';
  * `M` recovers from about 15% damage, which is the usual recommendation for a
  * code displayed on a screen. `H` would survive a cracked phone display but
  * makes the code denser for the same payload, and a denser code is harder to
- * scan in poor light — the more likely problem at a meetup.
+ * scan in poor light, the more likely problem at a meetup.
  */
 const ERROR_CORRECTION = 'M' as const;
 

@@ -4,15 +4,15 @@ import { invokeFunction } from '#lib/server/functions/invoke';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Purchase — `/commitment/[commitment_id]/pay`.
+ * Purchase, `/commitment/[commitment_id]/pay`.
  *
  * The destination encoded in QR #2. Entirely separate from the meetup: by the
  * time anyone reaches this page the commitment is already fulfilled and both
  * stakes are back, so buying is a free choice and the page has to read like
  * one.
  *
- * SCANNING NEVER CHARGES. The load asks `pay_commitment` for a QUOTE — the
- * same function, same conversion, no `confirm` — and only the POST pays. That
+ * SCANNING NEVER CHARGES. The load asks `pay_commitment` for a QUOTE, the
+ * same function, same conversion, no `confirm`, and only the POST pays. That
  * is why the figure on the button is the figure that will be taken: it was
  * produced by the code that takes it, not calculated again here.
  */
@@ -28,7 +28,7 @@ interface Quote {
 	currency_code: string;
 	rate_source: string;
 	balance_lamports: number | null;
-	/** Null when Solana could not be reached — not the same as "cannot afford". */
+	/** Null when Solana could not be reached, not the same as "cannot afford". */
 	sufficient: boolean | null;
 }
 
@@ -80,7 +80,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		return blocked(
 			'The buyer scans this code',
 			commitment.seller_id === user.id
-				? 'You are the seller — this is the code you show, not one you scan.'
+				? 'You are the seller, this is the code you show, not one you scan.'
 				: 'This code belongs to someone else’s purchase.'
 		);
 	}
@@ -155,7 +155,7 @@ export const actions: Actions = {
 			const needsFunds = result.error.code === 'INSUFFICIENT_FUNDS';
 
 			/**
-			 * Insufficient funds leaves everything else intact — the commitment is
+			 * Insufficient funds leaves everything else intact, the commitment is
 			 * still complete, the stakes are still back, and the code is still
 			 * usable. Topping up and trying again is the whole remedy, and the
 			 * message must not suggest the meetup is in doubt.

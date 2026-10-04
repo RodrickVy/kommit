@@ -15,7 +15,7 @@ import type { Database } from '#lib/supabase/database.types';
  * ------------------------------------------------
  * The client is bound to this request's cookies, so it carries this user's
  * access token and nothing else. A module-scope singleton shared between
- * requests would leak one user's session to another under concurrency — the
+ * requests would leak one user's session to another under concurrency, the
  * most damaging bug available in an SSR app. Hence a factory, and hence no
  * caching here.
  *
@@ -39,7 +39,7 @@ export function createRequestClient(event: RequestEvent): SupabaseClient<Databas
 			getAll: () => event.cookies.getAll(),
 
 			/**
-			 * Called when the Supabase client needs to persist a session — on
+			 * Called when the Supabase client needs to persist a session, on
 			 * sign-in, on sign-out, and whenever it silently refreshes an
 			 * access token that was about to expire.
 			 *

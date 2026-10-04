@@ -11,7 +11,7 @@ import { defineEnvVars } from '@sveltejs/kit/env';
  *     import { SUPABASE_SERVICE_ROLE_KEY } from '$app/env/private'; // server only
  *
  * Nothing reads `process.env` directly, and there is no hand-written config
- * accessor — the framework supplies both the validation and the types. Each
+ * accessor, the framework supplies both the validation and the types. Each
  * `description` below becomes a JSDoc comment on the generated export, so it
  * shows on hover wherever the variable is used.
  *
@@ -21,7 +21,7 @@ import { defineEnvVars } from '@sveltejs/kit/env';
  * bundled into the JavaScript sent to the browser. Anyone can read it with
  * view-source. A variable left private is importable only from
  * `$app/env/private`, and SvelteKit fails the build if client code reaches
- * it — so a leak is a compile error rather than a breach.
+ * it, so a leak is a compile error rather than a breach.
  *
  * WHY NOTHING IS `static`
  * -----------------------
@@ -54,14 +54,14 @@ const SOLANA_NETWORKS = ['devnet', 'testnet', 'mainnet-beta'] as const;
  * (`PUBLIC_SUPABASE_URL=`), so a half-filled `.env` is the likeliest mistake
  * and must be caught here rather than treated as configured.
  *
- * Validator messages never name the variable — SvelteKit already prints the
+ * Validator messages never name the variable, SvelteKit already prints the
  * name as a heading above them.
  */
 function required(value: string | undefined): string {
 	const trimmed = value?.trim();
 
 	if (!trimmed) {
-		throw new Error('must be set to a non-empty value — see .env.example');
+		throw new Error('must be set to a non-empty value, see .env.example');
 	}
 
 	return trimmed;
@@ -122,7 +122,7 @@ function requiredOneOf<const T extends readonly string[]>(allowed: T) {
  *
  * Used for anything belonging to a feature that is not built yet: the app must
  * start without it, and the resulting `string | undefined` type forces
- * whichever feature needs it to acknowledge that it might be missing — see
+ * whichever feature needs it to acknowledge that it might be missing, see
  * `requireSecret` in `src/lib/server/config/require-secret.ts`.
  */
 function optional(value: string | undefined): string | undefined {
@@ -180,7 +180,7 @@ export const variables = defineEnvVars({
 		schema: optional,
 		description:
 			'Mapbox public access token (starts `pk.`) for the check-in map.\n\n' +
-			'Public by design — Mapbox public tokens are meant for the browser.\n' +
+			'Public by design, Mapbox public tokens are meant for the browser.\n' +
 			'Restrict it to your domains in the Mapbox dashboard. Optional: the\n' +
 			'map is simply hidden without it; check-in itself still works.'
 	},
@@ -269,7 +269,7 @@ export const variables = defineEnvVars({
 			'SendGrid API key. SECRET.\n\n' +
 			'Grants the ability to send mail as our verified domain, so a leak\n' +
 			'means someone else can send email that appears to come from us.\n' +
-			'Scope the key to "Mail Send" only — a full-access key can also read\n' +
+			'Scope the key to "Mail Send" only, a full-access key can also read\n' +
 			'contacts and suppression lists.'
 	},
 

@@ -4,7 +4,7 @@
 	import type { WalletState } from '#lib/server/functions/invoke';
 
 	/**
-	 * WalletBalance — the balance, as read from Solana.
+	 * WalletBalance, the balance, as read from Solana.
 	 *
 	 * Used on the wallet page, the account page and the home dashboard, so the
 	 * same number is formatted identically everywhere and the network is always
@@ -19,7 +19,7 @@
 	let { wallet, showAddress = false }: Props = $props();
 
 	/**
-	 * Four decimal places. Two is not enough — commitment stakes and network
+	 * Four decimal places. Two is not enough, commitment stakes and network
 	 * fees both live below a hundredth of a SOL, so rounding to cents would
 	 * display a non-zero balance as 0.00.
 	 */
@@ -61,7 +61,7 @@
 		<span class="dot" aria-hidden="true"></span>
 		Solana <span class="cluster">{wallet.network}</span>
 		{#if !isLiveNetwork}
-			— test network, no real value
+			· test network, no real value
 		{/if}
 	</p>
 

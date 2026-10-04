@@ -4,7 +4,7 @@ import { hasServiceRole } from '../_shared/privileged.ts';
 import { createWallet } from '../_shared/solana.ts';
 
 /**
- * setup_platform_wallet — creates the single Kommitly Main Wallet.
+ * setup_platform_wallet, creates the single Kommitly Main Wallet.
  *
  * A SETUP STEP, not a feature. Run once, by an operator, with the service role
  * key. There is no UI for it and no user can reach it.
@@ -19,7 +19,7 @@ import { createWallet } from '../_shared/solana.ts';
  * The wallet's private key must be encrypted with the same mechanism as every
  * other custodial key, and that encryption key is an Edge Function secret. It
  * is deliberately absent from Postgres, so a migration could not encrypt
- * anything — it would have to store the key in the clear, which is the one
+ * anything, it would have to store the key in the clear, which is the one
  * thing the design exists to prevent.
  *
  * IDEMPOTENT. Running it twice returns the existing wallet and generates
@@ -33,7 +33,7 @@ Deno.serve(async (request: Request) => {
 	if (refusal) return refusal;
 
 	/**
-	 * Service role only. A user's JWT is explicitly not enough — this creates
+	 * Service role only. A user's JWT is explicitly not enough, this creates
 	 * the account that will hold everyone's staked funds.
 	 *
 	 * Checked as a CAPABILITY rather than by comparing the token to an expected
@@ -84,7 +84,7 @@ Deno.serve(async (request: Request) => {
 		if (inserted.error) {
 			/**
 			 * A unique violation means a concurrent run won. The desired state is
-			 * reached either way, so read theirs back — the alternative is a
+			 * reached either way, so read theirs back, the alternative is a
 			 * caller who believes setup failed and runs it again.
 			 */
 			if (inserted.error.code === '23505') {
@@ -111,7 +111,7 @@ Deno.serve(async (request: Request) => {
 			solana_address: inserted.data.solana_address,
 			created_at: inserted.data.created_at,
 			message:
-				'Main Wallet created. It holds no SOL yet — fund it before any stake is settled, ' +
+				'Main Wallet created. It holds no SOL yet, fund it before any stake is settled, ' +
 				'since refunds are paid out of it.'
 		});
 	} catch (error) {

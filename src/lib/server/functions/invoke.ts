@@ -5,7 +5,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
  *
  * Always through the REQUEST-SCOPED client, never the admin one. The function
  * reads the caller's identity from the JWT it receives, so invoking with the
- * user's own client is what makes "whose wallet is this" answerable at all —
+ * user's own client is what makes "whose wallet is this" answerable at all,
  * and it means a function can never be tricked into acting for someone else by
  * a value in the request body.
  */
@@ -24,8 +24,8 @@ export type FunctionResult<T> =
  * Invokes an Edge Function and normalises both success and failure.
  *
  * The Supabase client reports a non-2xx response as a thrown-style error whose
- * body has to be read separately, which means the function's own error code —
- * the only part worth branching on — is buried. This unwraps it so callers get
+ * body has to be read separately, which means the function's own error code,
+ * the only part worth branching on, is buried. This unwraps it so callers get
  * `{ ok: false, error: { code, message } }` whatever went wrong.
  *
  * @param supabase The request-scoped client, i.e. `event.locals.supabase`.
@@ -59,7 +59,7 @@ export async function invokeFunction<T>(
 			}
 		} catch {
 			/**
-			 * Body was not JSON — a gateway error page, a timeout. Falls through
+			 * Body was not JSON, a gateway error page, a timeout. Falls through
 			 * to the generic case below rather than masking the failure.
 			 */
 		}
@@ -100,7 +100,7 @@ export interface CreatedWallet {
  * Reads the signed-in user's wallet.
  *
  * Returns `null` when they do not have one yet, which is a legitimate state
- * rather than an error — it means `create_wallet` has not run. Distinguishing
+ * rather than an error, it means `create_wallet` has not run. Distinguishing
  * it from a real failure lets the UI offer to create one instead of showing a
  * problem the user cannot fix.
  */

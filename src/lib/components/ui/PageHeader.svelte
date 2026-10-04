@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 
 	/**
-	 * PageHeader — the heading block at the top of every route.
+	 * PageHeader, the heading block at the top of every route.
 	 *
 	 * Used by all pages so that heading level, spacing and the title/summary
 	 * relationship are identical throughout. It renders the page's single

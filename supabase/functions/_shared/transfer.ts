@@ -2,7 +2,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@^2.117.0';
 import { checkCanSend, explorerUrl, parseAddress, sendLamports } from './solana.ts';
 
 /**
- * `transfer_funds` from the function contracts — the central money-movement
+ * `transfer_funds` from the function contracts, the central money-movement
  * function.
  *
  * Every flow that moves value goes through here: locking a stake, refunding
@@ -14,8 +14,8 @@ import { checkCanSend, explorerUrl, parseAddress, sendLamports } from './solana.
  * IDEMPOTENCY IS THE WHOLE POINT.
  * Network calls time out and get retried; a retried transfer without this
  * moves money twice, and money moved twice cannot be un-moved. The caller
- * supplies a key identifying the BUSINESS operation — "the buyer's stake for
- * commitment X" — not the attempt. Replaying with the same key returns the
+ * supplies a key identifying the BUSINESS operation, "the buyer's stake for
+ * commitment X", not the attempt. Replaying with the same key returns the
  * original result and transfers nothing.
  */
 
@@ -93,11 +93,11 @@ export async function transferFunds(
 	/**
 	 * A previous attempt under this key decides everything.
 	 *
-	 *   completed — return it; the money already moved.
-	 *   pending   — an attempt is in flight, or died mid-transfer. Refuse rather
+	 *   completed, return it; the money already moved.
+	 *   pending  , an attempt is in flight, or died mid-transfer. Refuse rather
 	 *               than send again: the first may yet confirm, and sending a
 	 *               second is how money gets created from nothing.
-	 *   failed    — the earlier attempt definitively moved nothing, so retrying
+	 *   failed   , the earlier attempt definitively moved nothing, so retrying
 	 *               under the same key is safe.
 	 */
 	const prior = await db
@@ -132,7 +132,7 @@ export async function transferFunds(
 
 	/**
 	 * Claim the key BEFORE sending. The unique constraint settles a race between
-	 * two concurrent attempts — only one insert wins, and the loser never
+	 * two concurrent attempts, only one insert wins, and the loser never
 	 * reaches the chain.
 	 */
 	let transactionId: string;
@@ -222,7 +222,7 @@ export async function transferFunds(
 		return {
 			ok: false,
 			code: 'CHAIN_ERROR',
-			message: 'Solana rejected the transfer. Nothing was moved — please try again.'
+			message: 'Solana rejected the transfer. Nothing was moved, please try again.'
 		};
 	}
 }

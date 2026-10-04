@@ -10,7 +10,7 @@ import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@^2.
  * The consequence is that every query in a function is responsible for its own
  * scoping. There is no policy underneath to catch a missing
  * `.eq('profile_id', ...)`, so each query must be written as though it were the
- * only protection — because it is.
+ * only protection, because it is.
  */
 export function serviceClient(): SupabaseClient {
 	const url = Deno.env.get('SUPABASE_URL');
@@ -34,8 +34,8 @@ export function serviceClient(): SupabaseClient {
  * Resolves the caller from their JWT.
  *
  * The function is invoked with the user's own access token in the
- * Authorization header. Reading the user from that token — rather than
- * trusting a `profile_id` in the request body — is what stops one user
+ * Authorization header. Reading the user from that token, rather than
+ * trusting a `profile_id` in the request body, is what stops one user
  * creating or querying another user's wallet.
  *
  * @returns The authenticated user's id, or null when the token is not valid.

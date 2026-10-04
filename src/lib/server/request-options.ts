@@ -17,8 +17,18 @@ export interface RequestOptions {
 		specific_date: string | null;
 	}[];
 	slots: Slot[];
+	/** What this buyer would put down. Null when signed out or unavailable. */
 	stakeCents: number | null;
+	/** How that figure was reached, shown beside it. */
+	fee: CommitmentFee | null;
 	minimumLeadHours: number | null;
+}
+
+export interface CommitmentFee {
+	baseFeeCents: number;
+	reputation: number;
+	marketReputation: number;
+	feeCents: number;
 }
 
 /**
@@ -54,13 +64,13 @@ export async function loadRequestOptions(
 	const availability = availabilityResult.data ?? [];
 
 	if (!includeSlots) {
-		return { locations, availability, slots: [], stakeCents: null, minimumLeadHours: null };
+		return { locations, availability, slots: [], stakeCents: null, fee: null, minimumLeadHours: null };
 	}
 
-	const [settingsResult, takenResult] = await Promise.all([
+	const [settingsResult, takenResult, feeResult] = await Promise.all([
 		locals.supabase
 			.from('market_settings')
-			.select('base_commitment_fee_cents, minimum_acceptance_lead_hours')
+			.select('minimum_acceptance_lead_hours')
 			.eq('id', 1)
 			.single(),
 		/**
@@ -72,12 +82,28 @@ export async function loadRequestOptions(
 			.from('commitments')
 			.select('scheduled_at')
 			.eq('seller_id', sellerId)
-			.eq('status', 'accepted')
+			.eq('status', 'accepted'),
+		/**
+		 * The viewer's own fee: base fee scaled by their reputation against the
+		 * market's. Calculated in the database, the same function the request
+		 * itself uses, so what is shown is what is charged.
+		 */
+		locals.supabase.rpc('my_commitment_fee').maybeSingle()
 	]);
+
+	const feeRow = feeResult.data;
+	const fee: CommitmentFee | null = feeRow
+		? {
+				baseFeeCents: Number(feeRow.base_fee_cents),
+				reputation: Number(feeRow.reputation),
+				marketReputation: Number(feeRow.market_reputation),
+				feeCents: Number(feeRow.fee_cents)
+			}
+		: null;
 
 	const settings = settingsResult.data;
 	if (!settings) {
-		return { locations, availability, slots: [], stakeCents: null, minimumLeadHours: null };
+		return { locations, availability, slots: [], stakeCents: null, fee: null, minimumLeadHours: null };
 	}
 
 	const slots = generateSlots(availability, {
@@ -93,7 +119,8 @@ export async function loadRequestOptions(
 		locations,
 		availability,
 		slots,
-		stakeCents: settings.base_commitment_fee_cents,
+		stakeCents: fee?.feeCents ?? null,
+		fee,
 		minimumLeadHours: settings.minimum_acceptance_lead_hours
 	};
 }

@@ -2,7 +2,7 @@ import { redirect } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 
 /**
- * Check in — `/check-in/[commitment_id]`.
+ * Check in, `/check-in/[commitment_id]`.
  *
  * Kept as a redirect rather than a page. Checking in now happens on the
  * commitment itself, which is the only place it makes sense: the button is
@@ -11,7 +11,7 @@ import type { PageServerLoad } from './$types';
  * not two.
  *
  * The route stays because it is in the original route list and may be linked
- * from somewhere — a notification, a bookmark, a QR someone kept. A redirect
+ * from somewhere, a notification, a bookmark, a QR someone kept. A redirect
  * is the honest version of "that moved".
  *
  * 303 rather than 302: this says "go and look at the commitment", which is a

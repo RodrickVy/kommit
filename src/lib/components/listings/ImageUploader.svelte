@@ -5,7 +5,7 @@
 	import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from '#lib/listings/images';
 
 	/**
-	 * ImageUploader — uploads listing photographs one at a time, with progress.
+	 * ImageUploader, uploads listing photographs one at a time, with progress.
 	 *
 	 * WHY XHR AND NOT `fetch`
 	 * -----------------------
@@ -190,7 +190,7 @@
 			{:else}
 				<strong>Choose photographs</strong>
 				<span class="dropzone-hint">
-					or drag them here — JPEG, PNG, WebP or AVIF, up to 8 MB each
+					or drag them here, JPEG, PNG, WebP or AVIF, up to 8 MB each
 				</span>
 			{/if}
 		</span>
@@ -232,7 +232,7 @@
 	{/if}
 
 	{#if uploading}
-		<Alert tone="info">Uploading — leaving this page will stop it.</Alert>
+		<Alert tone="info">Uploading, leaving this page will stop it.</Alert>
 	{/if}
 </div>
 

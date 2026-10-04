@@ -3,7 +3,7 @@ import { fail, guardRequest, json } from '../_shared/http.ts';
 import { LAMPORTS_PER_SOL, getWalletBalance } from '../_shared/solana.ts';
 
 /**
- * query_wallet — the live state of a wallet.
+ * query_wallet, the live state of a wallet.
  *
  *   POST /query_wallet   {}        // the caller's own wallet
  *
@@ -20,7 +20,7 @@ import { LAMPORTS_PER_SOL, getWalletBalance } from '../_shared/solana.ts';
  *
  * That is the whole point of this function. A stored balance is a second
  * source of truth, and it diverges the first time anything moves on-chain that
- * the app did not initiate — a direct deposit from Solflare, for instance,
+ * the app did not initiate, a direct deposit from Solflare, for instance,
  * which is exactly how users are told to fund their wallet. Reading the chain
  * means the number shown is the number that exists.
  *
@@ -74,7 +74,7 @@ Deno.serve(async (request: Request) => {
 		/**
 		 * The RPC endpoint being unreachable is a temporary condition, and the
 		 * caller may retry. Reported as 503 rather than 500 so it is
-		 * distinguishable from a real fault, and never as a balance of zero —
+		 * distinguishable from a real fault, and never as a balance of zero,
 		 * telling someone their money is gone because a network call failed
 		 * would be the worst possible answer.
 		 */
@@ -83,7 +83,7 @@ Deno.serve(async (request: Request) => {
 	}
 
 	/**
-	 * The display conversion. A configured number, not a live quote — see the
+	 * The display conversion. A configured number, not a live quote, see the
 	 * column comment on market_settings.sol_price_cents.
 	 *
 	 * Fetched after the balance so that a missing settings row degrades to "no

@@ -16,7 +16,7 @@ import type { SessionUser } from '#lib/types/auth';
 export const handle: Handle = async ({ event, resolve }) => {
 	/**
 	 * A fresh Supabase client bound to this request's cookies. Created per
-	 * request, never shared — see the warning in `request-client.ts`.
+	 * request, never shared, see the warning in `request-client.ts`.
 	 */
 	event.locals.supabase = createRequestClient(event);
 
@@ -30,7 +30,7 @@ export const handle: Handle = async ({ event, resolve }) => {
 	 * This matters because of how data loading is structured: the root layout
 	 * asks for the user on every navigation, and individual pages ask again
 	 * when they need to scope a query. Without the cache, one navigation
-	 * could trigger several signature checks — and, worse, several token
+	 * could trigger several signature checks, and, worse, several token
 	 * refreshes racing each other.
 	 */
 	let verified: SessionUser | null | undefined;

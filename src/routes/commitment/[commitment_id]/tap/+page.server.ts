@@ -4,13 +4,13 @@ import { invokeFunction } from '#lib/server/functions/invoke';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Meetup verification — `/commitment/[commitment_id]/tap`.
+ * Meetup verification, `/commitment/[commitment_id]/tap`.
  *
  * The destination encoded in QR #1. The buyer's phone camera opens it, the
  * page checks who they are, and completion is a POST they make deliberately.
  *
  * NOTHING HAPPENS ON LOAD. The token travels in the query string, so anything
- * done here would also be done by whatever else follows a link — a chat app
+ * done here would also be done by whatever else follows a link, a chat app
  * generating a preview, a security scanner, the browser prefetching. A GET
  * must stay safe to repeat.
  *
@@ -64,7 +64,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	 * instead of pretending otherwise. The scheduled resolver retries it.
 	 *
 	 * Scoped by RLS to the viewer's own wallet, which is exactly the right
-	 * scope — a refund credits the wallet it returns to, so this answers "is my
+	 * scope, a refund credits the wallet it returns to, so this answers "is my
 	 * stake back" and says nothing about the other person's.
 	 */
 	const { data: refund } = await locals.supabase
@@ -104,7 +104,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		return blocked(
 			'The buyer scans this code',
 			commitment.seller_id === user.id
-				? 'You are the seller on this commitment — this is the code you show, not one you scan. Hand your phone to the buyer, or let them scan your screen.'
+				? 'You are the seller on this commitment, this is the code you show, not one you scan. Hand your phone to the buyer, or let them scan your screen.'
 				: 'This code belongs to someone else’s commitment.'
 		);
 	}
@@ -137,7 +137,7 @@ export const actions: Actions = {
 	/**
 	 * Confirms the meetup happened, which returns both stakes.
 	 *
-	 * Every check is repeated inside `complete_commitment` — this action only
+	 * Every check is repeated inside `complete_commitment`, this action only
 	 * carries the token across. The load's checks exist to explain things
 	 * before the button is pressed, not to authorise it.
 	 */

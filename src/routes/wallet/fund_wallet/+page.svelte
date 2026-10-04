@@ -7,7 +7,7 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Fund wallet — `/wallet/fund_wallet`.
+	 * Fund wallet, `/wallet/fund_wallet`.
 	 *
 	 * The address, a QR of it, and how to send to it. `FundingPanel` carries all
 	 * three and is shared with /admin, where the operator funds the Main Wallet:

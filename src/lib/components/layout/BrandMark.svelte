@@ -1,11 +1,11 @@
 <script lang="ts">
 	/**
-	 * BrandMark — the kommitly logo followed by the wordmark.
+	 * BrandMark, the kommitly logo followed by the wordmark.
 	 *
 	 * Used in the header and the footer; it is a component rather than
 	 * duplicated markup so the two can never disagree.
 	 *
-	 * Purely presentational — it renders no link. The caller decides where it
+	 * Purely presentational, it renders no link. The caller decides where it
 	 * points, which is what lets the header wrap it in a link to `/` while
 	 * the footer renders it as plain text.
 	 */

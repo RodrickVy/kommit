@@ -3,7 +3,7 @@ import { safeRedirectTarget } from '#lib/server/auth/guards';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Sign in — email and password.
+ * Sign in, email and password.
  *
  * Deliberately gives less detail than the join form. See the note on the
  * failure branch below.
@@ -15,7 +15,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	}
 
 	/**
-	 * A message handed over by `/auth/callback` — an expired link, a link
+	 * A message handed over by `/auth/callback`, an expired link, a link
 	 * already used. Shown here because this is where someone sent back from a
 	 * dead link can actually do something about it.
 	 *
@@ -37,7 +37,7 @@ export const actions: Actions = {
 		if (email.length === 0) errors.email = 'Enter your email address.';
 		if (password.length === 0) errors.password = 'Enter your password.';
 
-		/** One consistent failure shape — see the note in `join/+page.server.ts`. */
+		/** One consistent failure shape, see the note in `join/+page.server.ts`. */
 		const failure = (
 			status: number,
 			payload: { errors?: Record<string, string>; formError?: string }
@@ -61,7 +61,7 @@ export const actions: Actions = {
 			 *
 			 * This is not laziness. "No account with that email" and "wrong
 			 * password" are different answers, and the difference is a free
-			 * oracle for checking whether an address has an account here —
+			 * oracle for checking whether an address has an account here,
 			 * which is worth something to an attacker and worth nothing to an
 			 * honest user, who knows which email they used.
 			 *
@@ -70,7 +70,7 @@ export const actions: Actions = {
 			 */
 			if (error.message.toLowerCase().includes('confirm')) {
 				return failure(403, {
-					formError: 'Confirm your email address first — check your inbox for the link.'
+					formError: 'Confirm your email address first, check your inbox for the link.'
 				});
 			}
 

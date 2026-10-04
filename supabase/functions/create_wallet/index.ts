@@ -4,7 +4,7 @@ import { hasServiceRole, privilegedCaller } from '../_shared/privileged.ts';
 import { createWallet } from '../_shared/solana.ts';
 
 /**
- * create_wallet — gives an owner a custodial Solana wallet.
+ * create_wallet, gives an owner a custodial Solana wallet.
  *
  * Two endpoints, distinguished by path. They do almost the same thing; what
  * differs is who the wallet belongs to and who is allowed to ask.
@@ -16,7 +16,7 @@ import { createWallet } from '../_shared/solana.ts';
  *   { "created": true, "wallet_id": "<uuid>", "solana_address": "<base58>" }
  *
  * `created` is false when the owner already had a wallet. Calling twice is
- * safe and returns the existing one rather than failing — this is invoked
+ * safe and returns the existing one rather than failing, this is invoked
  * right after sign-up, where a retry after a timeout is ordinary, and a hard
  * error there would strand a new account with no wallet.
  *
@@ -51,7 +51,7 @@ Deno.serve(async (request: Request) => {
 		 * There are only ever three charities and they are seeded by migration,
 		 * so nothing a user does should create a wallet for one. Left open, any
 		 * signed-in account could generate custodial keypairs for arbitrary
-		 * charity ids — not a theft route, since the platform holds the keys,
+		 * charity ids, not a theft route, since the platform holds the keys,
 		 * but an unauthenticated way to make the service mint and encrypt keys
 		 * on demand, and an operation nobody could attribute afterwards.
 		 *
@@ -78,7 +78,7 @@ Deno.serve(async (request: Request) => {
 		 * The requested profile must be the caller's own.
 		 *
 		 * The id arrives in the body, but it is NOT what decides whose wallet
-		 * this is — the JWT is. Without this check, any signed-in user could
+		 * this is, the JWT is. Without this check, any signed-in user could
 		 * name someone else's profile and have a wallet created under it, and
 		 * the owner would never know a custodial key existed in their name.
 		 *
@@ -123,7 +123,7 @@ async function createFor(
 	/**
 	 * Return the existing wallet rather than creating a second one. The unique
 	 * constraint would reject a duplicate anyway, but failing on a retry is
-	 * unhelpful when the correct outcome — this owner has a wallet — is already
+	 * unhelpful when the correct outcome, this owner has a wallet, is already
 	 * true.
 	 */
 	const existing = await db
@@ -142,7 +142,7 @@ async function createFor(
 
 	/**
 	 * The owner must exist. Without this a typo creates an orphaned wallet
-	 * holding a key nobody can ever reach — and for a charity, money sent to it
+	 * holding a key nobody can ever reach, and for a charity, money sent to it
 	 * would be unrecoverable.
 	 */
 	const owner = await db.from(ownerTable).select('id').eq('id', ownerId).maybeSingle();

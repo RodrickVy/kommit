@@ -3,7 +3,7 @@ import type { Database } from '#lib/supabase/database.types';
 /**
  * Human-readable labels for the listing enums.
  *
- * The database stores `used_like_new`; a person reads "Used — like new". The
+ * The database stores `used_like_new`; a person reads "Used, like new". The
  * mapping lives here, once, so a label cannot say one thing on the create form
  * and another on the listing card.
  *
@@ -17,9 +17,9 @@ export type ListingStatus = Database['public']['Enums']['listing_status'];
 
 export const CONDITION_LABELS: Record<ListingCondition, string> = {
 	new: 'New',
-	used_like_new: 'Used — like new',
-	used_good: 'Used — good',
-	used_fair: 'Used — fair'
+	used_like_new: 'Used, like new',
+	used_good: 'Used, good',
+	used_fair: 'Used, fair'
 };
 
 /**

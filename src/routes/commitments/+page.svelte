@@ -11,7 +11,7 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Commitments — `/commitments`.
+	 * Commitments, `/commitments`.
 	 */
 	let { data }: PageProps = $props();
 
@@ -36,7 +36,7 @@
 		label: option.label.replace('Meetup date, ', 'Meetup ')
 	}));
 
-	/** Shown in the viewer's own timezone — both parties mean the same instant. */
+	/** Shown in the viewer's own timezone, both parties mean the same instant. */
 	function when(iso: string): string {
 		return new Intl.DateTimeFormat('en-CA', {
 			weekday: 'short',
@@ -94,7 +94,7 @@
 	<Panel>
 		<p class="empty">
 			Nothing yet. Find something in <a href="/discover">Discover</a> and request
-			a meetup — the seller accepts, you both put down a refundable stake, and you
+			a meetup, the seller accepts, you both put down a refundable stake, and you
 			both show up.
 		</p>
 	</Panel>

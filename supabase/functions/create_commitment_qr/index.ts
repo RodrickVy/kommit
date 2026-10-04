@@ -3,7 +3,7 @@ import { fail, guardRequest, json } from '../_shared/http.ts';
 import { createQrToken } from '../_shared/qr.ts';
 
 /**
- * create_commitment_qr — issues QR #1, the meetup verification code.
+ * create_commitment_qr, issues QR #1, the meetup verification code.
  *
  *   POST /create_commitment_qr
  *   { "commitment_id": "<uuid>" }
@@ -79,7 +79,7 @@ Deno.serve(async (request: Request) => {
 		 * The code proves a meeting happened. Issuing one before both people
 		 * have shown they are at the location would let a seller generate it at
 		 * home, send a screenshot, and have a buyer who never left the house
-		 * "verify" a meetup — returning both stakes for nothing. The check-in
+		 * "verify" a meetup, returning both stakes for nothing. The check-in
 		 * requirement is the only thing tying the code to a physical place.
 		 */
 		if (!commitment.buyer_checked_in_at || !commitment.seller_checked_in_at) {

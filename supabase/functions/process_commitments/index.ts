@@ -5,13 +5,13 @@ import { meetupDay } from '../_shared/meetup_day.ts';
 import { settleStake, type Party, type SettlementType } from '../_shared/stake.ts';
 
 /**
- * process_commitments — the single scheduled resolver.
+ * process_commitments, the single scheduled resolver.
  *
  *   POST /process_commitments        (service role, or an admin)
  *
  * ONE function rather than one endpoint per timeout. Every automatic outcome
  * is a deadline that passed with nobody acting, and they share the same
- * reasoning about evidence and fault — split across five endpoints, the fifth
+ * reasoning about evidence and fault, split across five endpoints, the fifth
  * would eventually disagree with the first about who was responsible.
  *
  * WHAT IT DECIDES
@@ -24,7 +24,7 @@ import { settleStake, type Party, type SettlementType } from '../_shared/stake.t
  *   both checked in, no QR #1      -> Stale.      Both refunded.
  *
  * Stale is the verdict when fault cannot be assigned fairly. Nobody is
- * penalised for a situation the evidence cannot explain — guessing would mean
+ * penalised for a situation the evidence cannot explain, guessing would mean
  * donating a stranger's money to charity on a hunch.
  *
  * IT MUST BE SAFE TO RUN TWICE, and that is structural rather than careful:
@@ -32,7 +32,7 @@ import { settleStake, type Party, type SettlementType } from '../_shared/stake.t
  *   * every status change is a compare-and-set, so a second run finds nothing
  *     left to claim
  *   * every settlement goes through `settle_stake`, whose idempotency key
- *     names the commitment, the party and the outcome — a replay returns the
+ *     names the commitment, the party and the outcome, a replay returns the
  *     original transfer and moves nothing
  *
  * It also RECONCILES. A settlement that failed during a live request (a
@@ -84,7 +84,7 @@ async function settleAll(
 		} else {
 			/**
 			 * NOTHING_STAKED is not a failure. A seller who declined never staked,
-			 * and a request whose transfer failed has nothing held — in both cases
+			 * and a request whose transfer failed has nothing held, in both cases
 			 * there is correctly nothing to settle.
 			 */
 			if (result.code === 'NOTHING_STAKED') continue;
@@ -100,7 +100,7 @@ async function settleAll(
 /**
  * The settlements each resolved status is supposed to have produced.
  *
- * Declared once, here, and used for both resolving and reconciling — so the
+ * Declared once, here, and used for both resolving and reconciling, so the
  * retry path cannot drift from the original intent, which is precisely how a
  * reconciler ends up paying somebody twice or not at all.
  */
@@ -149,7 +149,7 @@ function expectedSettlements(
  * Requests the seller never answered.
  *
  * Declining promptly costs a seller nothing, so ignoring a request entirely is
- * the behaviour this records. The buyer gets their stake back in full — they
+ * the behaviour this records. The buyer gets their stake back in full, they
  * did everything asked of them and got no answer.
  */
 async function resolveExpiredRequests(db: Db): Promise<Outcome[]> {
@@ -165,7 +165,7 @@ async function resolveExpiredRequests(db: Db): Promise<Outcome[]> {
 	for (const candidate of candidates ?? []) {
 		/**
 		 * Compare-and-set. A seller accepting at the same moment as this run
-		 * wins or loses cleanly — whoever changes the row first — and the loser
+		 * wins or loses cleanly, whoever changes the row first, and the loser
 		 * does nothing rather than resolving a commitment that moved on.
 		 */
 		const claimed = await db
@@ -179,7 +179,7 @@ async function resolveExpiredRequests(db: Db): Promise<Outcome[]> {
 
 		/**
 		 * `actor_profile_id` null: nobody acted. That is the whole content of
-		 * the event — a deadline passed in silence.
+		 * the event, a deadline passed in silence.
 		 *
 		 * The seller's part is recorded in metadata rather than in
 		 * `responsible_party`, which the schema restricts to `cancelled` and
@@ -221,7 +221,7 @@ interface Verdict {
  * overdue yet.
  *
  * Pure, and separated from the writing, because this is the only part worth
- * reasoning about carefully — the rest is bookkeeping.
+ * reasoning about carefully, the rest is bookkeeping.
  */
 function verdictFor(commitment: AcceptedRow, now: number): Verdict | null {
 	const buyerIn = commitment.buyer_checked_in_at;
@@ -337,7 +337,7 @@ async function resolveOverdueCommitments(db: Db): Promise<Outcome[]> {
  *
  * It decides what to retry from `wallet_transactions`: a settlement is
  * outstanding when no COMPLETED row exists for its idempotency key. Calling
- * `settle_stake` again is then safe by construction — a completed transfer
+ * `settle_stake` again is then safe by construction, a completed transfer
  * replays and moves nothing, a failed one is retried, and one still pending is
  * refused as in-flight.
  */
@@ -430,7 +430,7 @@ Deno.serve(async (request: Request) => {
 		/**
 		 * Sequential, not parallel. The three phases read and write the same
 		 * rows, and running them concurrently would mean two of them racing to
-		 * claim one commitment — survivable, because of the compare-and-sets,
+		 * claim one commitment, survivable, because of the compare-and-sets,
 		 * but it would make a run's output impossible to read.
 		 */
 		const expired = await resolveExpiredRequests(db);

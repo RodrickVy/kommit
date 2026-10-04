@@ -7,9 +7,17 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Sell — `/sell`.
+	 * Sell, `/sell`.
 	 */
 	let { data }: PageProps = $props();
+
+	const missingSetup = $derived(
+		!data.setup.hasLocations && !data.setup.hasAvailability
+			? 'a meetup location and your availability'
+			: !data.setup.hasLocations
+				? 'a meetup location'
+				: 'your availability'
+	);
 </script>
 
 <svelte:head>
@@ -27,15 +35,7 @@
 		<Alert tone="info">
 			<strong>Buyers cannot request a meetup yet.</strong>
 			<p>
-				Add
-				{#if !data.setup.hasLocations && !data.setup.hasAvailability}
-					a meetup location and your weekly availability
-				{:else if !data.setup.hasLocations}
-					a meetup location
-				{:else}
-					your weekly availability
-				{/if}
-				— every listing uses them.
+				Add {missingSetup}. Every listing uses them.
 			</p>
 		</Alert>
 		<div class="setup-action">

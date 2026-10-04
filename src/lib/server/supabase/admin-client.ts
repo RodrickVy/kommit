@@ -17,7 +17,7 @@ import type { Database } from '#lib/supabase/database.types';
  * It therefore must not be used to serve a request on a user's behalf. The
  * correct client for that is `event.locals.supabase`, which acts as the user
  * and is constrained by RLS. Reaching for this client because a query "wasn't
- * returning anything" means an RLS policy is wrong — fix the policy.
+ * returning anything" means an RLS policy is wrong, fix the policy.
  *
  * Legitimate uses are operations that have no user to act as:
  *

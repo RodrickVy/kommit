@@ -7,7 +7,7 @@
 	import { formatPrice } from '#lib/format';
 
 	/**
-	 * RequestPanel — choose a place and a time, and request a meetup.
+	 * RequestPanel, choose a place and a time, and request a meetup.
 	 *
 	 * Used on the listing page and in the request dialog on Discover cards. It
 	 * always posts to the listing's own `requestCommitment` action, so there is
@@ -22,6 +22,13 @@
 		hasAvailability: boolean;
 		slots: { startsAt: string }[];
 		stakeCents: number | null;
+		/** How the fee was reached: base, the buyer's reputation, the market's. */
+		fee?: {
+			baseFeeCents: number;
+			reputation: number;
+			marketReputation: number;
+			feeCents: number;
+		} | null;
 		minimumLeadHours: number | null;
 	}
 
@@ -34,6 +41,7 @@
 		hasAvailability,
 		slots,
 		stakeCents,
+		fee = null,
 		minimumLeadHours
 	}: Props = $props();
 
@@ -187,6 +195,30 @@
 			-->
 		</div>
 
+		{#if fee}
+			<!--
+				The fee, and how it was reached. A more reliable record than the
+				market average pays less than the base; a less reliable one, more.
+			-->
+			<dl class="fee">
+				<div class="fee-row">
+					<dt>Base commitment fee</dt>
+					<dd>{formatPrice(fee.baseFeeCents)}</dd>
+				</div>
+				<div class="fee-row">
+					<dt>Your reputation</dt>
+					<dd>
+						{fee.reputation.toFixed(3)}
+						<span class="fee-hint">market average {fee.marketReputation.toFixed(3)}</span>
+					</dd>
+				</div>
+				<div class="fee-row fee-total">
+					<dt>You put down</dt>
+					<dd>{formatPrice(fee.feeCents)} CAD</dd>
+				</div>
+			</dl>
+		{/if}
+
 		<div class="action">
 			<Button type="submit" disabled={requesting}>
 				{requesting ? 'Requesting…' : 'Request a meetup'}
@@ -196,9 +228,9 @@
 
 	{#if stakeCents !== null}
 		<p class="note">
-			Requesting puts down a <strong>{formatPrice(stakeCents)}</strong> commitment. The seller
-			puts down the same when they accept, and you both get it back when you meet. It is a
-			commitment to <em>meet</em>, not to buy — you can inspect the item and walk away.
+			Refunded in full when you both show up. The seller puts down their own commitment
+			when they accept. It is a commitment to <em>meet</em>, not to buy, so you can inspect
+			the item and walk away.
 		</p>
 	{/if}
 {/if}
@@ -226,6 +258,48 @@
 	.fields :global(select),
 	.fields :global(input) {
 		width: 100%;
+	}
+
+	.fee {
+		display: grid;
+		gap: var(--k-space-2);
+		margin: var(--k-space-4) 0 0;
+		padding: var(--k-space-3);
+		background-color: var(--k-surface-sunken);
+		font-size: var(--k-text-sm);
+	}
+
+	.fee-row {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: var(--k-space-3);
+	}
+
+	.fee-row dt {
+		color: var(--k-text-muted);
+	}
+
+	.fee-row dd {
+		margin: 0;
+		text-align: right;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.fee-hint {
+		display: block;
+		color: var(--k-text-subtle);
+		font-size: var(--k-text-xs);
+	}
+
+	.fee-total {
+		padding-top: var(--k-space-2);
+		border-top: var(--k-line-width) solid var(--k-line);
+		font-weight: 700;
+	}
+
+	.fee-total dt {
+		color: var(--k-text);
 	}
 
 	.action {

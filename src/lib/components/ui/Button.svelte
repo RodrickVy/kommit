@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 
 	/**
-	 * Button — every clickable action in kommitly.
+	 * Button, every clickable action in kommitly.
 	 *
 	 * Renders a real `<button>` when it performs an action, and a real `<a>`
 	 * when it navigates. That distinction is not cosmetic: a link can be
@@ -15,7 +15,7 @@
 	interface Props {
 		/**
 		 * Visual weight, which should reflect importance rather than taste.
-		 * At most one `primary` button should be visible in a given view —
+		 * At most one `primary` button should be visible in a given view,
 		 * if everything is emphasised, nothing is.
 		 *
 		 * - `primary`   the one action the page is for
@@ -54,12 +54,12 @@
 		 *
 		 * Most actions in kommitly are form submissions, which need no handler
 		 * at all and keep working without JavaScript. This exists for the
-		 * genuinely client-side cases — filling a form with an example, toggling
-		 * a disclosure — where there is nothing to submit.
+		 * genuinely client-side cases, filling a form with an example, toggling
+		 * a disclosure, where there is nothing to submit.
 		 */
 		onclick?: ((event: MouseEvent) => void) | undefined;
 
-		/** Button label. Text, not an icon on its own — an icon-only control needs a `.k-visually-hidden` label. */
+		/** Button label. Text, not an icon on its own, an icon-only control needs a `.k-visually-hidden` label. */
 		children: Snippet;
 	}
 

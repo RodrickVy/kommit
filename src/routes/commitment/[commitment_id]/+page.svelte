@@ -14,7 +14,7 @@
 	import { explorerTxUrl } from '#lib/solana/explorer';
 
 	/**
-	 * Commitment detail — `/commitment/[commitment_id]`.
+	 * Commitment detail, `/commitment/[commitment_id]`.
 	 *
 	 * One page for both parties. Which actions appear depends on role and
 	 * status, decided on the server; every action re-checks before writing.
@@ -60,7 +60,7 @@
 	const theyCheckedIn = $derived(data.isBuyer ? c.seller_checked_in_at : c.buyer_checked_in_at);
 	const bothCheckedIn = $derived(Boolean(iCheckedIn && theyCheckedIn));
 
-	/** Shown in the viewer's own timezone — both parties mean the same instant. */
+	/** Shown in the viewer's own timezone, both parties mean the same instant. */
 	function at(iso: string): string {
 		return new Intl.DateTimeFormat('en-CA', {
 			weekday: 'long',
@@ -149,7 +149,7 @@
 			<div class="fund">
 				<Button href="/wallet/fund_wallet" variant="secondary" size="sm">Add funds</Button>
 				<p class="fund-note">
-					Nothing was taken. The request is still open — add funds and accept
+					Nothing was taken. The request is still open, add funds and accept
 					again.
 				</p>
 			</div>
@@ -192,7 +192,7 @@
 			<div class="note">
 				<Alert tone="info">
 					A commitment to <strong>meet</strong>, not to buy. Show up, verify the
-					meetup, and your stake comes back — whether or not anything is bought.
+					meetup, and your stake comes back, whether or not anything is bought.
 				</Alert>
 			</div>
 		</Panel>
@@ -275,14 +275,14 @@
 							<p class="muted">
 								Ask the seller to show their verification code, then scan it with
 								your phone's camera. Scanning it completes the commitment and
-								returns both stakes — it does not buy anything.
+								returns both stakes, it does not buy anything.
 							</p>
 						{:else}
 							{#if form?.qr?.purpose === 'meetup_verification'}
 								<QrDisplay
 									qr={form.qr}
 									refreshAction="?/showMeetupQr"
-									instructions="The buyer scans this with their phone. It verifies the meetup and returns both stakes — it does not take payment."
+									instructions="The buyer scans this with their phone. It verifies the meetup and returns both stakes, it does not take payment."
 								/>
 							{:else}
 								<p class="muted">
@@ -342,7 +342,7 @@
 						{#if data.isBuyer}
 							<p class="muted">
 								Take your time with the item. You can walk away now with no
-								penalty — your stake is already back. If you do want it, ask the
+								penalty, your stake is already back. If you do want it, ask the
 								seller to show their purchase code.
 							</p>
 							{#if c.listings}
@@ -354,7 +354,7 @@
 							<QrDisplay
 								qr={form.qr}
 								refreshAction="?/showPaymentQr"
-								instructions="The buyer scans this to open a payment page. Scanning alone charges nothing — they still have to confirm the amount."
+								instructions="The buyer scans this to open a payment page. Scanning alone charges nothing, they still have to confirm the amount."
 							/>
 						{:else}
 							<p class="muted">
@@ -406,7 +406,7 @@
 				<p class="muted">
 					{data.isBuyer
 						? 'This request expired without an answer, so your stake was refunded in full. You can send a new request.'
-						: 'This request expired without your answer. The buyer was refunded and nothing was taken from you — but declining promptly is free, and ignoring requests is recorded.'}
+						: 'This request expired without your answer. The buyer was refunded and nothing was taken from you, but declining promptly is free, and ignoring requests is recorded.'}
 				</p>
 			</Panel>
 		{/if}
@@ -435,7 +435,7 @@
 
 			<!--
 				The lamport figure is the amount that actually moved, and it is what
-				a refund returns — not a reconversion of the dollar amount. Shown
+				a refund returns, not a reconversion of the dollar amount. Shown
 				where it exists so the two numbers never appear to disagree.
 			-->
 			{#if myStakeLamports}
@@ -472,8 +472,12 @@
 				</p>
 			{:else if c.status === 'pending' && !data.isBuyer}
 				<p class="muted">
-					Accepting commits you both and takes your stake. Declining is free and
-					is not held against you.
+					Accepting commits you both and takes your commitment fee
+					{#if data.sellerFee}
+						of <strong>{formatPrice(data.sellerFee.feeCents)} CAD</strong> (base
+						{formatPrice(data.sellerFee.baseFeeCents)}, your reputation
+						{data.sellerFee.reputation.toFixed(3)}){/if}, refunded when you both show up. Declining is free and does not
+					affect your reputation.
 				</p>
 				<div class="actions">
 					<form method="POST" action="?/accept" use:enhance>

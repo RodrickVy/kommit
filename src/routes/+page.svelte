@@ -1,24 +1,50 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import {
+		faArrowRight,
 		faCircleCheck,
+		faCoins,
+		faGaugeHigh,
+		faReceipt,
+		faHandHoldingHeart,
 		faHandshake,
 		faMagnifyingGlassLocation,
-		faPeopleArrows
+		faPeopleArrows,
+		faScaleBalanced,
+		faShieldHalved,
+		faUserSecret
 	} from '@fortawesome/free-solid-svg-icons';
-	import ListingCard from '#lib/components/listings/ListingCard.svelte';
 	import Icon from '#lib/components/ui/Icon.svelte';
-	import Alert from '#lib/components/ui/Alert.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
-	import Panel from '#lib/components/ui/Panel.svelte';
-	import type { PageProps } from './$types';
 
 	/**
-	 * Home — `/`.
+	 * Home, `/`.
 	 *
-	 * What kommitly is, how it works, and the newest listings as a sliding row.
+	 * What kommitly is, how it works, and what it stands for.
 	 */
-	let { data }: PageProps = $props();
+	/** What the marketplace stands for, shown under "Our mission". */
+	const VALUES = [
+		{
+			icon: faScaleBalanced,
+			title: 'Honest',
+			text: 'A commitment on both sides means people only request what they intend to follow through on.'
+		},
+		{
+			icon: faShieldHalved,
+			title: 'Reputable and hard to scam',
+			text: 'Meetups are confirmed in person, at the agreed place, before any money changes hands, and every record builds a trustworthy track record.'
+		},
+		{
+			icon: faUserSecret,
+			title: 'Private by default',
+			text: 'No phone numbers or emails swapped with strangers. Everything you need to meet happens on kommitly.'
+		},
+		{
+			icon: faHandHoldingHeart,
+			title: 'Giving back',
+			text: 'When someone doesn’t show up, their commitment doesn’t go to us, it goes to charity.'
+		}
+	];
 
 	/** Find → Commit → Meet → Complete. */
 	const STEPS = [
@@ -45,33 +71,10 @@
 	];
 
 	const signedIn = $derived(page.data.user != null);
-
-	let track = $state<HTMLUListElement>();
-	let atStart = $state(true);
-	let atEnd = $state(false);
-
-	/** Which arrows make sense, recomputed as the row scrolls or resizes. */
-	function updateEdges() {
-		if (!track) return;
-		atStart = track.scrollLeft <= 4;
-		atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 4;
-	}
-
-	/** One "page" of cards at a time; scroll-snap lines the result up. */
-	function slide(direction: 1 | -1) {
-		track?.scrollBy({ left: direction * track.clientWidth * 0.9, behavior: 'smooth' });
-	}
-
-	$effect(() => {
-		void data.listings;
-		updateEdges();
-	});
 </script>
 
-<svelte:window onresize={updateEdges} />
-
 <svelte:head>
-	<title>kommitly — local meetups people actually show up to</title>
+	<title>kommitly, local meetups people actually show up to</title>
 	<meta
 		name="description"
 		content="Buy and sell locally. Both sides put down a refundable $2 commitment, so everyone shows up."
@@ -80,14 +83,18 @@
 
 <section class="hero" aria-labelledby="hero-title">
 	<h1 id="hero-title">Local deals, backed by a promise to show up.</h1>
+	<p class="lede">
+		Buy and sell with people nearby. Both sides put down a small, refundable
+		commitment, so the person you are meeting actually turns up.
+	</p>
 
 	<div class="hero-actions">
-		<Button href="/discover">Browse listings</Button>
-		{#if signedIn}
-			<Button href="/sell/create_listing" variant="secondary">Sell something</Button>
-		{:else}
-			<Button href="/join" variant="secondary">Create an account</Button>
-		{/if}
+		<!-- The main action: most visitors come to find something. -->
+		<a class="cta-primary k-cut" href="/discover">
+			Browse listings
+			<Icon icon={faArrowRight} />
+		</a>
+		<Button href="/sell/create_listing" variant="secondary">Sell a listing</Button>
 	</div>
 </section>
 
@@ -105,65 +112,66 @@
 		{/each}
 	</ol>
 </section>
-
-<section class="preview" aria-labelledby="preview-title">
-	<div class="preview-head">
+<!--
+	Full-width band. The background reaches the edges of the window while the
+	content stays aligned with the rest of the page; see `.solana` below.
+-->
+<section class="solana" aria-labelledby="solana-title">
+	<div class="solana-intro">
+		<img class="solana-logo" src="/solana_logo.png" alt="Solana" width="316" height="316" />
 		<div>
-			<h2 id="preview-title">New on Discover</h2>
-			<p class="muted">The latest items, from sellers who commit to meeting.</p>
-		</div>
-		<div class="preview-controls">
-			{#if data.listings.length > 1}
-				<button
-					type="button"
-					class="arrow k-cut"
-					onclick={() => slide(-1)}
-					disabled={atStart}
-					aria-label="Previous listings">←</button
-				>
-				<button
-					type="button"
-					class="arrow k-cut"
-					onclick={() => slide(1)}
-					disabled={atEnd}
-					aria-label="Next listings">→</button
-				>
-			{/if}
-			<a class="see-all" href="/discover">See all</a>
+			<h2 id="solana-title" class="solana-title">
+				Backed by blazingly fast <span class="solana-word">Solana</span>
+			</h2>
+			<p class="solana-text">
+				Every commitment, refund and payment moves on Solana, so it lands in seconds,
+				costs a fraction of a cent, and leaves a public receipt anyone can check.
+			</p>
 		</div>
 	</div>
 
-	{#if data.listingsError}
-		<Alert tone="error">{data.listingsError}</Alert>
-	{:else if data.listings.length === 0}
-		<Panel>
-			<p class="muted">
-				{#if signedIn}
-					Nothing listed yet. <a href="/sell/create_listing">List something</a> and it
-					will be the first thing buyers see.
-				{:else}
-					Nothing listed yet. <a href="/join">Create an account</a> to add the first one.
-				{/if}
-			</p>
-		</Panel>
-	{:else}
-		<!--
-			A native horizontal scroller with snap points: swipe on a phone, the
-			arrow buttons or a trackpad on a computer, and it never traps the
-			keyboard — every card is still an ordinary link in tab order.
-		-->
-		<ul class="track" role="list" bind:this={track} onscroll={updateEdges}>
-			{#each data.listings as listing (listing.id)}
-				<li class="slide">
-					<ListingCard
-						{listing}
-						imagePath={listing.listing_images[0]?.storage_path ?? null}
-						showRequest
-					/>
-				</li>
-			{/each}
-		</ul>
-	{/if}
+	<ul class="solana-facts" role="list">
+		<li><Icon icon={faGaugeHigh} /> Settles in seconds</li>
+		<li><Icon icon={faCoins} /> Fees under a cent</li>
+		<li><Icon icon={faReceipt} /> Every transfer verifiable</li>
+	</ul>
+</section>
+
+<!-- Why kommitly exists, ending in an invitation to be part of it. -->
+<section class="mission" aria-labelledby="mission-title">
+	<div class="mission-intro">
+		<h2 id="mission-title" class="section-title">Our mission</h2>
+		<p class="mission-text">
+			Buying from a stranger shouldn't feel like a gamble. We are building a local
+			marketplace where showing up is the norm, scams are hard to pull off, and every
+			broken promise does some good.
+		</p>
+	</div>
+
+	<ul class="values" role="list">
+		{#each VALUES as value (value.title)}
+			<li class="value">
+				<span class="value-icon"><Icon icon={value.icon} /></span>
+				<div>
+					<h3 class="value-title">{value.title}</h3>
+					<p class="value-text">{value.text}</p>
+				</div>
+			</li>
+		{/each}
+	</ul>
+
+	<div class="movement k-cut">
+		<p class="movement-text">
+			<strong>This is a movement, not just a marketplace.</strong>
+			Every meetup that happens as promised makes buying locally a little more
+			trustworthy for everyone.
+		</p>
+		{#if signedIn}
+			<Button href="/sell/create_listing">List something and join in</Button>
+		{:else}
+			<Button href="/join">Join the movement</Button>
+		{/if}
+	</div>
 </section>
 
 
@@ -179,7 +187,7 @@
 	.how {
 		display: grid;
 		gap: var(--k-space-4);
-		margin-bottom: var(--k-space-7);
+		margin-bottom: var(--k-space-8);
 	}
 
 	.section-title {
@@ -263,97 +271,217 @@
 
 
 
-	.preview {
-		margin-bottom: var(--k-space-7);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	.lede {
+		max-width: 46ch;
+		color: var(--k-text-muted);
+		font-size: var(--k-text-lg);
 	}
 
-	.preview-head {
-		display: flex;
-		flex-wrap: wrap;
-		align-items: flex-end;
-		justify-content: space-between;
-		gap: var(--k-space-3);
-		margin-bottom: var(--k-space-4);
-	}
-
-	.preview-head h2 {
-		font-size: var(--k-text-xl);
-	}
-
-	.muted {
-		color: var(--k-text-subtle);
-		font-size: var(--k-text-sm);
-	}
-
-	.preview-controls {
-		display: flex;
+	/* The main call to action, larger than a standard button so the eye lands
+	   on it first; "Sell a listing" sits beside it as the quieter option. */
+	.cta-primary {
+		display: inline-flex;
 		align-items: center;
-		gap: var(--k-space-2);
+		gap: var(--k-space-3);
+		min-height: 3.25rem;
+		padding: 0 var(--k-space-6);
+		background-color: var(--k-primary);
+		color: var(--k-on-primary);
+		font-size: var(--k-text-lg);
+		font-weight: 700;
+		text-decoration: none;
+		transition: background-color var(--k-duration-fast) var(--k-ease);
 	}
 
-	.arrow {
+	.cta-primary:hover {
+		background-color: var(--k-primary-hover);
+	}
+
+	.cta-primary:focus-visible {
+		outline: none;
+		box-shadow: inset 0 0 0 3px var(--k-on-primary);
+	}
+
+	.mission {
+		display: grid;
+		gap: var(--k-space-6);
+	}
+
+	.mission-intro {
+		display: grid;
+		gap: var(--k-space-3);
+		max-width: 46rem;
+	}
+
+	.mission-text {
+		color: var(--k-text-muted);
+		font-size: var(--k-text-lg);
+	}
+
+	.values {
+		display: grid;
+		gap: var(--k-space-5) var(--k-space-6);
+		margin: 0;
+	}
+
+	/* Four values read best as an even 2 × 2, never 3 + 1. */
+	@media (min-width: 40rem) {
+		.values {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	.value {
+		display: grid;
+		grid-template-columns: auto 1fr;
+		gap: var(--k-space-3);
+		align-items: start;
+	}
+
+	.value-icon {
+		display: grid;
+		place-items: center;
 		width: 2.5rem;
 		height: 2.5rem;
-		padding: 0;
-		border: 0;
 		background-color: var(--k-surface-raised);
-		color: var(--k-text);
-		font-size: var(--k-text-lg);
-		cursor: pointer;
+		color: var(--k-primary);
+		font-size: 1.125rem;
 	}
 
-	.arrow:hover:not(:disabled) {
-		background-color: var(--k-surface-sunken);
+	.value-title {
+		margin-bottom: var(--k-space-1);
+		font-size: var(--k-text-base);
 	}
 
-	.arrow:focus-visible {
-		box-shadow: inset 0 0 0 2px var(--k-primary);
-		outline: none;
-	}
-
-	.arrow:disabled {
-		color: var(--k-text-subtle);
-		cursor: default;
-		opacity: 0.5;
-	}
-
-	.see-all {
-		margin-left: var(--k-space-2);
+	.value-text {
+		color: var(--k-text-muted);
 		font-size: var(--k-text-sm);
 	}
 
-	.track {
-		display: grid;
-		grid-auto-flow: column;
-		grid-auto-columns: min(17rem, 78%);
-		gap: var(--k-space-4);
-		margin: 0;
-		padding-bottom: var(--k-space-3);
-		overflow-x: auto;
-		overscroll-behavior-x: contain;
-		scroll-snap-type: x mandatory;
-		scroll-padding-inline: 0;
-		scrollbar-width: thin;
-	}
-
-	.slide {
+	.movement {
 		display: flex;
-		scroll-snap-align: start;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--k-space-4);
+		padding: var(--k-space-6);
+		background-color: var(--k-surface-raised);
 	}
 
-	.slide > :global(*) {
-		flex: 1;
+	.movement-text {
+		max-width: 48ch;
+		color: var(--k-text-muted);
 	}
 
+	.movement-text strong {
+		display: block;
+		margin-bottom: var(--k-space-1);
+		color: var(--k-text);
+		font-size: var(--k-text-lg);
+	}
 
+	/* -- Solana band ------------------------------------------------------
+	   Full-bleed without 100vw: the background is a border-image pushed out
+	   100vw either side. That is paint only, so it never adds a horizontal
+	   scrollbar the way a 100vw-wide box does once a vertical scrollbar
+	   exists. The content inside keeps the page's own width and gutter. */
+	.solana {
+		display: grid;
+		grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+		align-items: center;
+		gap: var(--k-space-6);
+		margin-bottom: var(--k-space-8);
+		padding-block: var(--k-space-7);
+		border-image-source: linear-gradient(115deg, var(--k-band-bg-from), var(--k-band-bg-to));
+		border-image-slice: 0 fill;
+		border-image-width: 0;
+		border-image-outset: 0 100vw;
+		color: var(--k-band-text);
+	}
 
+	.solana-intro {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: var(--k-space-4);
+		align-items: start;
+	}
 
+	/* Round already, so it is not given the cut corners the tiles use. */
+	.solana-logo {
+		width: 3.5rem;
+		height: 3.5rem;
+		flex-shrink: 0;
+	}
 
+	.solana-title {
+		font-size: clamp(var(--k-text-xl), 3.5vw, var(--k-text-2xl));
+		line-height: 1.2;
+	}
 
+	.solana-word {
+		background: linear-gradient(90deg, var(--k-band-accent-from), var(--k-band-accent-to));
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
 
-	@media (prefers-reduced-motion: reduce) {
-		.track {
-			scroll-behavior: auto;
+	.solana-text {
+		max-width: 52ch;
+		margin-top: var(--k-space-2);
+		color: var(--k-band-text-muted);
+	}
+
+	.solana-facts {
+		display: grid;
+		gap: var(--k-space-3);
+		margin: 0;
+	}
+
+	.solana-facts li {
+		display: flex;
+		align-items: center;
+		gap: var(--k-space-3);
+		padding: var(--k-space-3) var(--k-space-4);
+		background-color: rgb(255 255 255 / 0.06);
+		box-shadow: inset 3px 0 0 0 var(--k-band-accent-to);
+		font-weight: 600;
+	}
+
+	.solana-facts :global(.icon) {
+		color: var(--k-band-accent-to);
+	}
+
+	@media (max-width: 48rem) {
+		.solana {
+			grid-template-columns: 1fr;
+			gap: var(--k-space-5);
+			padding-block: var(--k-space-6);
+		}
+	}
+
+	@media (max-width: 30rem) {
+		.solana-intro {
+			grid-template-columns: 1fr;
 		}
 	}
 </style>

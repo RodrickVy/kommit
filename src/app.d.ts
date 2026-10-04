@@ -40,7 +40,7 @@ declare global {
 			 * makes it safe to call from a layout and a page in the same
 			 * navigation.
 			 *
-			 * "Verified" means the access token's signature was checked — see
+			 * "Verified" means the access token's signature was checked, see
 			 * `src/lib/server/auth/verify-user.ts`. Authorisation decisions
 			 * may be based on this and on nothing else.
 			 */

@@ -9,7 +9,7 @@ import { getUserWallet } from '../_shared/wallets.ts';
 import { meetupDay } from '../_shared/meetup_day.ts';
 
 /**
- * pay_commitment — the optional item purchase, after a verified meetup.
+ * pay_commitment, the optional item purchase, after a verified meetup.
  *
  *   POST /pay_commitment
  *   { "commitment_id": "<uuid>", "token": "<from QR #2>" }                 -> quote
@@ -21,7 +21,7 @@ import { meetupDay } from '../_shared/meetup_day.ts';
  *
  * The quote is not a convenience. The buyer's page has to display the amount
  * it is about to take, and computing that anywhere else would mean two pieces
- * of code converting a price — which is how a button comes to say one number
+ * of code converting a price, which is how a button comes to say one number
  * and charge another. Both modes run every validation, so an expired code is
  * reported before the buyer reaches for the button.
  *
@@ -105,7 +105,7 @@ Deno.serve(async (request: Request) => {
 			return fail('INVALID_REQUEST', 'The meetup has to be verified before paying.', 409);
 		}
 
-		/** Buying happens at the meetup, on its day — not days later. */
+		/** Buying happens at the meetup, on its day, not days later. */
 		// TESTING: payment allowed on any day. Uncomment to require the meetup date.
 		// if (Date.now() >= meetupDay(commitment.scheduled_at).end.getTime()) {
 			// return fail('WINDOW_CLOSED', 'The day of this meetup has passed, so it can no longer be paid for here.', 409);
@@ -124,7 +124,7 @@ Deno.serve(async (request: Request) => {
 		/**
 		 * An existing completed payment is reported as success, not as an error.
 		 * A buyer whose connection dropped after the transfer confirmed should
-		 * see that they paid — telling them the code was used would read as a
+		 * see that they paid, telling them the code was used would read as a
 		 * failure for something that worked.
 		 */
 		const { data: existing } = await db
@@ -273,7 +273,7 @@ async function resolve(
  *
  * ORDER, AND WHY THE TOKEN IS CONSUMED LAST
  * -----------------------------------------
- *   1. claim a `pending` payment row — its partial unique index is what stops
+ *   1. claim a `pending` payment row, its partial unique index is what stops
  *      two concurrent taps from both reaching the chain
  *   2. transfer
  *   3. on success: complete the payment, mark the listing sold, consume the

@@ -5,7 +5,7 @@ import { transferFunds } from '../_shared/transfer.ts';
 import { getUserWallet } from '../_shared/wallets.ts';
 
 /**
- * withdraw_funds — send SOL out of a kommitly wallet to an address the user
+ * withdraw_funds, send SOL out of a kommitly wallet to an address the user
  * supplies.
  *
  *   POST /withdraw_funds
@@ -83,7 +83,7 @@ Deno.serve(async (request: Request) => {
 		}
 
 		/**
-		 * Without a caller-supplied key, every withdrawal is its own operation —
+		 * Without a caller-supplied key, every withdrawal is its own operation,
 		 * a user may legitimately withdraw the same amount twice. The key is
 		 * therefore derived from the request so a double-submitted FORM collapses
 		 * into one transfer, while two deliberate withdrawals minutes apart do

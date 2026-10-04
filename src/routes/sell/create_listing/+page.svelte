@@ -11,7 +11,7 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Create listing — `/sell/create_listing`.
+	 * Create listing, `/sell/create_listing`.
 	 */
 	let { data, form }: PageProps = $props();
 
@@ -28,7 +28,7 @@
 	 *   - without JavaScript a failed submission re-renders the page, the
 	 *     component mounts fresh, and this reads the returned values
 	 *   - with JavaScript the component is not remounted, and the inputs
-	 *     already hold what the user typed — re-reading `form` here would
+	 *     already hold what the user typed, re-reading `form` here would
 	 *     overwrite their edits with the values they had just submitted
 	 *
 	 * Without `untrack` Svelte warns, and rightly: the pattern is usually a
@@ -47,7 +47,7 @@
 	 *
 	 * Purely client-side: it populates the fields and nothing more. The seller
 	 * can edit every value before saving, and what they submit goes through
-	 * exactly the same validation as anything typed by hand — the example is a
+	 * exactly the same validation as anything typed by hand, the example is a
 	 * starting point, not a privileged path into the database.
 	 */
 	function fillWithExample() {
@@ -167,7 +167,7 @@
 				<Field
 					id="description"
 					label="Description"
-					hint="Optional. Say what a buyer could not tell from the photographs — wear, missing parts, why you are selling."
+					hint="Optional. Say what a buyer could not tell from the photographs, wear, missing parts, why you are selling."
 					error={form?.errors?.description}
 				>
 					{#snippet children({ id, describedBy, invalid })}

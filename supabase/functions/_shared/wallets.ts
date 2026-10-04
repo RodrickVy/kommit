@@ -5,7 +5,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@^2.117.0';
  *
  * Each returns the encrypted key alongside the address, because the caller is
  * about to sign with it. These are only reachable from an Edge Function using
- * the service role — the secret column is granted to no role a browser can
+ * the service role, the secret column is granted to no role a browser can
  * reach.
  */
 

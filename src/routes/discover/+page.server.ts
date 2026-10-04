@@ -3,7 +3,7 @@ import { DISCOVER_SORTS, MAX_QUERY_LENGTH, type DiscoverSort } from '#lib/listin
 import type { PageServerLoad } from './$types';
 
 /**
- * Discover — browse active listings.
+ * Discover, browse active listings.
  *
  * The only page a signed-out visitor is expected to spend time on, so it is
  * deliberately readable without an account. Row Level Security already limits
@@ -20,7 +20,7 @@ const PAGE_SIZE = 24;
 export const load: PageServerLoad = async ({ locals, url }) => {
 	/**
 	 * Page number from the query string. Anything that is not a positive
-	 * integer is treated as page 1 rather than erroring — a mangled URL should
+	 * integer is treated as page 1 rather than erroring, a mangled URL should
 	 * show listings, not a stack trace.
 	 */
 	const requestedPage = Number(url.searchParams.get('page'));
@@ -30,7 +30,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const to = from + PAGE_SIZE - 1;
 
 	/**
-	 * Columns are listed explicitly — never `select('*')`. Everything a load
+	 * Columns are listed explicitly, never `select('*')`. Everything a load
 	 * function returns is serialised into the page's HTML, so an unused column
 	 * is bandwidth on every request and a disclosure surface besides.
 	 *

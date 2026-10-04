@@ -94,6 +94,45 @@ export type Database = {
         }
         Relationships: []
       }
+      charity_votes: {
+        Row: {
+          charity_id: string
+          id: string
+          profile_id: string
+          vote_month: string
+          voted_at: string
+        }
+        Insert: {
+          charity_id: string
+          id?: string
+          profile_id: string
+          vote_month: string
+          voted_at?: string
+        }
+        Update: {
+          charity_id?: string
+          id?: string
+          profile_id?: string
+          vote_month?: string
+          voted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "charity_votes_charity_id_fkey"
+            columns: ["charity_id"]
+            isOneToOne: false
+            referencedRelation: "charities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "charity_votes_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       check_ins: {
         Row: {
           commitment_id: string
@@ -451,6 +490,8 @@ export type Database = {
           min_commitment_fee_cents: number
           minimum_acceptance_lead_hours: number
           qr_token_expiry_minutes: number
+          reputation_checkin_weight: number
+          reputation_outcome_weight: number
           request_expiry_hours: number
           sol_price_cents: number
           updated_at: string
@@ -472,6 +513,8 @@ export type Database = {
           min_commitment_fee_cents: number
           minimum_acceptance_lead_hours: number
           qr_token_expiry_minutes?: number
+          reputation_checkin_weight?: number
+          reputation_outcome_weight?: number
           request_expiry_hours: number
           sol_price_cents?: number
           updated_at?: string
@@ -493,6 +536,8 @@ export type Database = {
           min_commitment_fee_cents?: number
           minimum_acceptance_lead_hours?: number
           qr_token_expiry_minutes?: number
+          reputation_checkin_weight?: number
+          reputation_outcome_weight?: number
           request_expiry_hours?: number
           sol_price_cents?: number
           updated_at?: string
@@ -759,6 +804,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          commitment_checkins: number
           commitments_cancelled: number
           commitments_expired: number
           commitments_ignored: number
@@ -778,6 +824,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          commitment_checkins?: number
           commitments_cancelled?: number
           commitments_expired?: number
           commitments_ignored?: number
@@ -797,6 +844,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          commitment_checkins?: number
           commitments_cancelled?: number
           commitments_expired?: number
           commitments_ignored?: number
@@ -1009,8 +1057,39 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      apply_charity_vote_result: { Args: never; Returns: string }
+      calculate_reputation: { Args: { target: string }; Returns: number }
+      cast_charity_vote: { Args: { target: string }; Returns: string }
+      charity_vote_tally: {
+        Args: never
+        Returns: {
+          charity_id: string
+          is_my_vote: boolean
+          votes: number
+        }[]
+      }
+      commitment_fee_cents: { Args: { target: string }; Returns: number }
+      current_vote_month: { Args: never; Returns: string }
+      has_commitment_on_listing: {
+        Args: { target_listing: string }
+        Returns: boolean
+      }
       listing_is_held: { Args: { target_listing: string }; Returns: boolean }
+      my_commitment_fee: {
+        Args: never
+        Returns: {
+          base_fee_cents: number
+          fee_cents: number
+          market_reputation: number
+          reputation: number
+        }[]
+      }
+      refresh_market_reputation: { Args: never; Returns: number }
       release_purchase_holds: { Args: never; Returns: number }
+      reputation_score: {
+        Args: { cancelled: number; checkins: number; successful: number }
+        Returns: number
+      }
     }
     Enums: {
       commitment_event_type:

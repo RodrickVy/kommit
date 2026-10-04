@@ -5,11 +5,11 @@ import { renderQrSvg } from '#lib/server/qr';
 import type { PageServerLoad } from './$types';
 
 /**
- * Fund wallet — `/wallet/fund_wallet`.
+ * Fund wallet, `/wallet/fund_wallet`.
  *
  * Where a new user lands immediately after sign-up. Its only job is to get SOL
  * into their wallet, so it shows the address, the current balance, and how to
- * send to it — and nothing else.
+ * send to it, and nothing else.
  *
  * The balance is read live on every load. The user is about to send money from
  * an app we have no connection to, so the only way to know it arrived is to

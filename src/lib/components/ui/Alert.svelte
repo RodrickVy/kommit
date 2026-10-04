@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 
 	/**
-	 * Alert — a form-level or page-level message.
+	 * Alert, a form-level or page-level message.
 	 *
 	 * For things that are not about one specific field: "that email and
 	 * password do not match", "listing saved", "upload failed".

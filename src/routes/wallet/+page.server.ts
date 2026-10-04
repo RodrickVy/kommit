@@ -5,7 +5,7 @@ import { loadWalletActivity } from '#lib/server/solana/activity';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Wallet — `/wallet`.
+ * Wallet, `/wallet`.
  *
  * Everything shown here comes from `query_wallet`, which reads the balance
  * from Solana on every request. Nothing about a balance is cached or stored:
@@ -27,9 +27,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		activity: wallet ? loadWalletActivity(locals.supabase, wallet.solana_address) : Promise.resolve(null),
 		/**
 		 * Three distinct states the page must tell apart:
-		 *   wallet set        — show the balance
-		 *   wallet null, no error — none created yet, offer to create one
-		 *   error             — Solana or the function is down; say so rather
+		 *   wallet set       , show the balance
+		 *   wallet null, no error, none created yet, offer to create one
+		 *   error            , Solana or the function is down; say so rather
 		 *                       than implying the money is gone
 		 */
 		loadError: error?.message ?? null
@@ -41,7 +41,7 @@ export const actions: Actions = {
 	 * Creates a wallet for someone who does not have one.
 	 *
 	 * Normally done at sign-up. This exists for the accounts that could not be
-	 * — where email confirmation meant there was no session at the time — and
+	 *, where email confirmation meant there was no session at the time, and
 	 * as a recovery path if that call ever failed.
 	 */
 	createWallet: async ({ locals, url }) => {
@@ -63,7 +63,7 @@ export const actions: Actions = {
 	/**
 	 * Sends SOL out to an address the user supplies.
 	 *
-	 * The source is never accepted from the form — `withdraw_funds` resolves it
+	 * The source is never accepted from the form, `withdraw_funds` resolves it
 	 * from the caller's own session. An endpoint that took a source wallet would
 	 * let anyone drain anyone, which is the risk a custodial design has to be
 	 * most careful about.

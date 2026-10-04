@@ -8,7 +8,7 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Join — `/join`.
+	 * Join, `/join`.
 	 */
 	let { form }: PageProps = $props();
 

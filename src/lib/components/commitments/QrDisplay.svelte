@@ -6,7 +6,7 @@
 	/**
 	 * A freshly issued QR code, with the time it has left.
 	 *
-	 * Used for both codes — meetup verification and purchase — because the
+	 * Used for both codes, meetup verification and purchase, because the
 	 * display problem is identical: show the code, say when it dies, offer to
 	 * replace it. What each code MEANS is the caller's job to explain, and the
 	 * two meanings must never be allowed to blur, so this component carries no
@@ -78,7 +78,7 @@
 	<div class="layout" class:dim={expired}>
 		{#if qr.svg}
 			<!--
-				Fixed white tile regardless of theme — a scanner needs the contrast.
+				Fixed white tile regardless of theme, a scanner needs the contrast.
 				Marked decorative because the link below is the accessible
 				equivalent of the same value.
 			-->
@@ -109,7 +109,7 @@
 			</p>
 
 			<!--
-				Shown so the code can be sent when scanning is impractical — two
+				Shown so the code can be sent when scanning is impractical, two
 				people on a video call, or a camera that will not focus. Opening it
 				still requires the buyer's own session, so the link is no weaker
 				than the picture.

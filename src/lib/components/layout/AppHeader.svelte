@@ -7,7 +7,7 @@
 	import type { SessionUser } from '#lib/types/auth';
 
 	/**
-	 * AppHeader — the application's primary navigation bar.
+	 * AppHeader, the application's primary navigation bar.
 	 *
 	 * Rendered once by the root layout, so it is present on every page and is
 	 * not re-created on navigation.
@@ -19,19 +19,27 @@
 		/**
 		 * The verified user for this request, or `null` when nobody is signed
 		 * in. Supplied by the root layout, which is the only place the user is
-		 * loaded — see `src/routes/+layout.server.ts`.
+		 * loaded, see `src/routes/+layout.server.ts`.
 		 */
 		user: SessionUser | null;
 
 		/**
 		 * Whether this user administers the marketplace, which reveals the
-		 * Admin link. PRESENTATION ONLY — /admin guards itself, and hiding a
+		 * Admin link. PRESENTATION ONLY, /admin guards itself, and hiding a
 		 * link protects nothing. See the warning on `NavVisibility`.
 		 */
 		isAdmin?: boolean;
+
+		/**
+		 * The name other people see. Shown in place of the email, which is
+		 * private; the email is only a fallback for an account with no name.
+		 */
+		displayName?: string | null;
 	}
 
-	let { user, isAdmin = false }: Props = $props();
+	let { user, isAdmin = false, displayName = null }: Props = $props();
+
+	const identity = $derived(displayName?.trim() || user?.email || 'Signed in');
 
 	/**
 	 * Which links this visitor sees. Recomputed when `user` changes, which
@@ -90,7 +98,7 @@
 
 		<div class="account">
 			{#if user}
-				<span class="identity">{user.email ?? 'Signed in'}</span>
+				<span class="identity">{identity}</span>
 				<Button href="/account" variant="secondary" size="sm">Account</Button>
 
 				<!--
@@ -149,7 +157,7 @@
 
 	<div class="drawer-account">
 		{#if user}
-			<span class="drawer-identity">{user.email ?? 'Signed in'}</span>
+			<span class="drawer-identity">{identity}</span>
 			<Button href="/account" variant="secondary">Account</Button>
 			<form method="POST" action="/account?/signout">
 				<Button type="submit" variant="quiet">Sign out</Button>
@@ -239,7 +247,7 @@
 	}
 
 	/* Styled from `aria-current` rather than a separate `.active` class, so
-	   the accessible state and the visible state cannot diverge — one cannot
+	   the accessible state and the visible state cannot diverge, one cannot
 	   be set without the other. */
 	.nav-link[aria-current='page'] {
 		color: var(--k-accent);

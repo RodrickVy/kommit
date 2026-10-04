@@ -4,7 +4,7 @@
 	import 'mapbox-gl/dist/mapbox-gl.css';
 
 	/**
-	 * CheckInMap — the meetup spot, the check-in radius around it, and where
+	 * CheckInMap, the meetup spot, the check-in radius around it, and where
 	 * this device is right now.
 	 *
 	 * GUIDANCE ONLY. The distance shown here is computed in the browser to help
@@ -27,7 +27,7 @@
 
 	const inside = $derived(distance !== null && distance <= radiusMetres);
 
-	/** Great-circle distance in metres — the same haversine the server uses. */
+	/** Great-circle distance in metres, the same haversine the server uses. */
 	function metresBetween(lat1: number, lon1: number, lat2: number, lon2: number): number {
 		const toRad = (deg: number) => (deg * Math.PI) / 180;
 		const dLat = toRad(lat2 - lat1);
@@ -163,7 +163,7 @@
 				{#if inside}
 					You are inside the check-in area ({formatDistance(distance)} away).
 				{:else}
-					You are {formatDistance(distance)} away — get within {radiusMetres} m to check in.
+					You are {formatDistance(distance)} away, get within {radiusMetres} m to check in.
 				{/if}
 				{#if accuracy !== null && accuracy > 50}
 					<span class="muted">GPS accuracy ±{Math.round(accuracy)} m.</span>

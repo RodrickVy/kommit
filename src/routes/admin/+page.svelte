@@ -12,7 +12,7 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Admin — `/admin`.
+	 * Admin, `/admin`.
 	 *
 	 * Reachable only by a profile carrying `is_admin`; the load answers 404 to
 	 * everyone else, so nothing here is hidden by CSS or by the navigation.
@@ -63,7 +63,7 @@
 		{#if !data.treasury}
 			<!--
 				Stated as a blocking problem rather than an empty state. Without the
-				treasury, every refund and every forfeit fails — there is nowhere for
+				treasury, every refund and every forfeit fails, there is nowhere for
 				a held stake to come back from.
 			-->
 			<Alert tone="error">
@@ -81,7 +81,7 @@
 						</div>
 						<p class="balance-note">
 							{#if data.treasury.lamports === null}
-								Solana could not be reached, so this balance is unknown — not zero.
+								Solana could not be reached, so this balance is unknown, not zero.
 								Try Refresh balances.
 							{:else if data.treasury.lamports === 0}
 								Empty. Every refund and every forfeit is paid from here, so
@@ -176,13 +176,13 @@
 										Said plainly. A charity without a wallet cannot be
 										selected, and a forfeit pointed at it would refuse.
 									-->
-									<span class="missing">None — cannot receive forfeited stakes</span>
+									<span class="missing">None, cannot receive forfeited stakes</span>
 								{/if}
 							</dd>
 						</div>
 						<div>
 							<dt>Received</dt>
-							<dd>{charity.address ? formatSol(charity.lamports) : '—'}</dd>
+							<dd>{charity.address ? formatSol(charity.lamports) : 'None'}</dd>
 						</div>
 					</dl>
 
@@ -322,7 +322,7 @@
 				Expires unanswered requests, resolves no-shows, marks unverifiable
 				meetups stale, and retries any settlement that failed earlier. Normally
 				run on a schedule; this is the same function by hand. Safe to run
-				repeatedly — nothing settles twice.
+				repeatedly, nothing settles twice.
 			</p>
 
 			<div class="charity-actions">
@@ -339,21 +339,69 @@
 		<Panel tone="sunken">
 			{#if data.settings}
 				<!--
-					Read-only. These values govern stakes and deadlines for everyone, and
-					an edit here changes commitments that are already in flight — so it
-					belongs in a deliberate change with history, not in a text box beside
-					the charity list. market_settings_history records every change.
+					The commitment fee and the reputation weights are editable. Saving
+					re-scores every profile at once and is recorded in
+					market_settings_history; commitments already agreed keep their stake.
 				-->
+				<form method="POST" action="?/updateMarketSettings" use:enhance class="settings-form">
+					<fieldset class="settings-group">
+						<legend>Commitment fee ({data.settings.currency_code})</legend>
+						<p class="config-note">
+							Fee = base × market reputation ÷ the person's reputation, kept between the
+							minimum and maximum.
+						</p>
+						<div class="settings-fields">
+							<label>
+								<span>Base fee</span>
+								<input name="base_fee" inputmode="decimal" required value={(data.settings.base_commitment_fee_cents / 100).toFixed(2)} />
+							</label>
+							<label>
+								<span>Minimum</span>
+								<input name="min_fee" inputmode="decimal" required value={(data.settings.min_commitment_fee_cents / 100).toFixed(2)} />
+							</label>
+							<label>
+								<span>Maximum</span>
+								<input name="max_fee" inputmode="decimal" required value={(data.settings.max_commitment_fee_cents / 100).toFixed(2)} />
+							</label>
+						</div>
+					</fieldset>
+
+					<fieldset class="settings-group">
+						<legend>Reputation weights</legend>
+						<p class="config-note">
+							Reputation = 1.000 + success rate × outcome weight − cancellation rate ×
+							outcome weight + check-in rate × check-in weight.
+						</p>
+						<div class="settings-fields">
+							<label>
+								<span>Outcome weight (success and cancellation)</span>
+								<input name="outcome_weight" inputmode="decimal" required value={data.settings.reputation_outcome_weight} />
+							</label>
+							<label>
+								<span>Check-in weight</span>
+								<input name="checkin_weight" inputmode="decimal" required value={data.settings.reputation_checkin_weight} />
+							</label>
+						</div>
+					</fieldset>
+
+					<div class="settings-actions">
+						<Button type="submit">Save settings</Button>
+						<span class="config-note">
+							Market reputation now: <strong>{Number(data.settings.market_reputation ?? 1).toFixed(3)}</strong>
+							(the average of every member's reputation)
+						</span>
+					</div>
+				</form>
+
 				<dl class="config">
-					<div><dt>Base stake</dt><dd>{(data.settings.base_commitment_fee_cents / 100).toFixed(2)} {data.settings.currency_code}</dd></div>
 					<div><dt>Check-in radius</dt><dd>{data.settings.check_in_radius_metres} m</dd></div>
 					<div><dt>Check-in window</dt><dd>{data.settings.check_in_window_minutes} min</dd></div>
 					<div><dt>QR lifetime</dt><dd>{data.settings.qr_token_expiry_minutes} min</dd></div>
 					<div><dt>Configured SOL price</dt><dd>{(data.settings.sol_price_cents / 100).toFixed(2)} {data.settings.currency_code}</dd></div>
 				</dl>
 				<p class="config-note">
-					Changed through the database, not here. The configured SOL price is a
-					display fallback — a purchase converts at a live quote.
+					These are changed through the database. The configured SOL price is a
+					display fallback, a purchase converts at a live quote.
 				</p>
 			{:else}
 				<Alert tone="error">Market settings are missing. Nothing will work until they exist.</Alert>
@@ -365,6 +413,51 @@
 <style>
 	.banner {
 		margin-bottom: var(--k-space-4);
+	}
+
+	.settings-form {
+		display: grid;
+		gap: var(--k-space-5);
+		margin-bottom: var(--k-space-5);
+		padding-bottom: var(--k-space-5);
+		border-bottom: var(--k-line-width) solid var(--k-line);
+	}
+
+	.settings-group {
+		display: grid;
+		gap: var(--k-space-3);
+		margin: 0;
+		padding: 0;
+		border: 0;
+		min-width: 0;
+	}
+
+	.settings-group legend {
+		margin-bottom: var(--k-space-2);
+		font-weight: 600;
+	}
+
+	.settings-fields {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+		gap: var(--k-space-3);
+	}
+
+	.settings-fields label {
+		display: grid;
+		gap: var(--k-space-1);
+		font-size: var(--k-text-sm);
+	}
+
+	.settings-fields span {
+		color: var(--k-text-muted);
+	}
+
+	.settings-actions {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: var(--k-space-3);
 	}
 
 	.stack {

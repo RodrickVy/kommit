@@ -1,7 +1,7 @@
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@^2.117.0';
 
 /**
- * `handle_qr_token` from the function contracts — internal function #18.
+ * `handle_qr_token` from the function contracts, internal function #18.
  *
  * One implementation of create / validate / consume, shared by both QR codes.
  * Two copies would mean two implementations of "usable exactly once", and the
@@ -30,7 +30,7 @@ export type QrPurpose = 'meetup_verification' | 'purchase';
  * Sized so that guessing is not a strategy: 256 bits of entropy inside a
  * window measured in minutes. Base64url rather than base64 because the value
  * travels in a URL inside a QR code, where plus and slash would need
- * percent-escaping — and an escaping bug here would read as a mysteriously
+ * percent-escaping, and an escaping bug here would read as a mysteriously
  * invalid code.
  */
 function generateToken(): string {
@@ -53,7 +53,7 @@ async function hashToken(token: string): Promise<string> {
 
 export interface CreatedQrToken {
 	readonly tokenId: string;
-	/** The raw token. Goes into the QR and back to the seller's page — nowhere else. */
+	/** The raw token. Goes into the QR and back to the seller's page, nowhere else. */
 	readonly token: string;
 	readonly expiresAt: string;
 }
@@ -144,7 +144,7 @@ export async function validateQrToken(
 	/**
 	 * Length-checked before hashing. Any string hashes to something, so without
 	 * this an empty value would become a well-formed lookup for a hash that
-	 * simply never matches — the same outcome, reached more slowly and with a
+	 * simply never matches, the same outcome, reached more slowly and with a
 	 * pointless round trip.
 	 */
 	if (typeof input.token !== 'string' || input.token.length < 16) {
@@ -204,7 +204,7 @@ export async function validateQrToken(
  * Marks a token used, and reports whether this caller is the one that used it.
  *
  * A COMPARE-AND-SET, which is the whole of the single-use guarantee. Two
- * simultaneous scans both validate successfully — validation is a read — and
+ * simultaneous scans both validate successfully, validation is a read, and
  * both arrive here. `.is('consumed_at', null)` means exactly one finds the
  * token unconsumed and updates it; the other matches no rows and gets `false`.
  * Checking first and updating after would leave a gap both could pass through.
@@ -236,7 +236,7 @@ export async function consumeQrToken(
  * Releases a token that was consumed by an operation that then failed.
  *
  * Narrow on purpose, and only safe where the caller knows nothing irreversible
- * happened — a status change that was refused, a validation that came after
+ * happened, a status change that was refused, a validation that came after
  * consumption. Calling it after money has moved would re-arm a code that has
  * already been paid against.
  */

@@ -1,7 +1,7 @@
 /**
  * Encryption for custodial wallet secret keys.
  *
- * AES-256-GCM via WebCrypto, which Deno provides natively — no dependency, and
+ * AES-256-GCM via WebCrypto, which Deno provides natively, no dependency, and
  * GCM is authenticated, so ciphertext that has been tampered with fails to
  * decrypt rather than yielding garbage that gets used as a signing key.
  *
@@ -47,7 +47,7 @@ async function importKey(): Promise<CryptoKey> {
  *
  * @returns base64 of `iv || ciphertext`. The IV is random per call and stored
  *          alongside rather than derived, because reusing an IV with the same
- *          key in GCM is catastrophic — it leaks the key stream.
+ *          key in GCM is catastrophic, it leaks the key stream.
  */
 export async function encryptSecret(secret: Uint8Array): Promise<string> {
 	const key = await importKey();
@@ -80,7 +80,7 @@ export async function decryptSecret(stored: string): Promise<Uint8Array> {
 
 	/**
 	 * GCM throws here if the ciphertext or IV has been altered. That is the
-	 * authentication doing its job, and the failure must not be swallowed —
+	 * authentication doing its job, and the failure must not be swallowed,
 	 * signing with a corrupted key would produce an invalid transaction at
 	 * best, and at worst a transfer to nowhere.
 	 */

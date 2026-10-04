@@ -26,7 +26,7 @@ export const TX_FEE_LAMPORTS = 5_000;
 
 /**
  * Solana's rent-exempt minimum. An account must hold either zero or at least
- * this much — there is no valid state between, and a transfer that would leave
+ * this much, there is no valid state between, and a transfer that would leave
  * a wallet in that gap is rejected by the chain with an error that reads like
  * a bug rather than a rule.
  */
@@ -51,7 +51,7 @@ export interface NewWallet {
 /**
  * Creates a wallet and encrypts its key for storage.
  *
- * The raw secret never leaves this function — it is encrypted before being
+ * The raw secret never leaves this function, it is encrypted before being
  * returned, so no caller can accidentally log or persist it in the clear.
  */
 export async function createWallet(): Promise<NewWallet> {
@@ -81,7 +81,7 @@ export function parseAddress(address: string): PublicKey {
  * `get_wallet_balance` from the function contracts.
  *
  * The authoritative balance, read from Solana. Deliberately does NOT decide
- * whether that balance is enough for anything — callers do that, because
+ * whether that balance is enough for anything, callers do that, because
  * "enough" differs between a withdrawal, a stake and a purchase.
  *
  * A thrown error means the chain could not be reached. It must never be
@@ -156,9 +156,9 @@ export async function checkCanSend(
 /**
  * Signs and sends a transfer, waiting for confirmation.
  *
- * THE REUSABLE MOVEMENT PRIMITIVE. Every flow that moves value — taking a
+ * THE REUSABLE MOVEMENT PRIMITIVE. Every flow that moves value, taking a
  * stake, refunding one, forfeiting one to a charity, paying for an item,
- * withdrawing — calls this and nothing else. There is exactly one piece of
+ * withdrawing, calls this and nothing else. There is exactly one piece of
  * code in kommitly that signs a transaction, which is the only way to be sure
  * the fee, rent and confirmation rules are applied consistently.
  *

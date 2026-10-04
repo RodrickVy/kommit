@@ -5,7 +5,7 @@ import { invokeFunction, type CreatedWallet } from '#lib/server/functions/invoke
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Join — create an account.
+ * Join, create an account.
  *
  * Email and password for now. The product specification describes passwordless
  * email codes, which is a change to this file and the sign-in form only; the
@@ -74,7 +74,7 @@ export const actions: Actions = {
 		 * Every failure returns the SAME shape.
 		 *
 		 * Without this, each `fail()` call site infers its own object type and
-		 * the page receives a union — at which point `form.errors.email` is a
+		 * the page receives a union, at which point `form.errors.email` is a
 		 * type error on the branches that happened not to set it. Returning one
 		 * shape consistently is both easier to consume and easier to reason
 		 * about than narrowing a union in the template.
@@ -123,7 +123,7 @@ export const actions: Actions = {
 				 *
 				 * Built from the REQUEST ORIGIN rather than a configured value,
 				 * so the link is correct in local development, on each preview
-				 * deployment and in production without three separate settings —
+				 * deployment and in production without three separate settings,
 				 * and so a preview never emails someone a production link.
 				 *
 				 * The origin must appear in the project's allowed redirect URLs
@@ -154,8 +154,8 @@ export const actions: Actions = {
 			/**
 			 * Supabase could not send the confirmation email.
 			 *
-			 * This covers several genuinely different causes — a rejected SMTP
-			 * credential, an unreachable relay, a rate limit — and they are NOT
+			 * This covers several genuinely different causes, a rejected SMTP
+			 * credential, an unreachable relay, a rate limit, and they are NOT
 			 * interchangeable. An earlier version of this branch asserted "rate
 			 * limited" for all of them, which sent debugging down the wrong path
 			 * for an hour: the real failure was an SMTP credential, and the
@@ -170,8 +170,8 @@ export const actions: Actions = {
 			const rateLimited = error.status === 429 || message.includes('rate limit');
 
 			/**
-			 * The underlying message is logged in full. Supabase's own text —
-			 * "Error sending confirmation email", an SMTP response code — is the
+			 * The underlying message is logged in full. Supabase's own text,
+			 * "Error sending confirmation email", an SMTP response code, is the
 			 * only thing that distinguishes a bad password from an unreachable
 			 * host, and it is invisible to the user by design.
 			 */
@@ -194,7 +194,7 @@ export const actions: Actions = {
 							/**
 							 * In development only, the raw cause is appended. It is the
 							 * fastest way to tell a wrong SMTP password from a wrong
-							 * host, and it must never reach a real user — error text
+							 * host, and it must never reach a real user, error text
 							 * from an auth service can disclose configuration.
 							 */
 							(dev ? ` [dev] ${error.status ?? ''} ${error.message}` : '')
@@ -210,7 +210,7 @@ export const actions: Actions = {
 		 * Only possible when sign-up returned a session: the function identifies
 		 * the owner from the caller's JWT, and with email confirmation enabled
 		 * there is no session yet. In that case the wallet is created on first
-		 * sign-in instead — see the root layout.
+		 * sign-in instead, see the root layout.
 		 *
 		 * A failure here is logged and swallowed. The account exists and is
 		 * usable; refusing to sign someone in because a wallet could not be

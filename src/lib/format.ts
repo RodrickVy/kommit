@@ -11,8 +11,8 @@
 export function formatPrice(cents: number): string {
 	/**
 	 * The division to dollars happens here and nowhere else, at the very edge
-	 * of the system. Everything upstream — the database, the ledger, the
-	 * arithmetic — stays in integer cents, because floating point cannot
+	 * of the system. Everything upstream, the database, the ledger, the
+	 * arithmetic, stays in integer cents, because floating point cannot
 	 * represent `0.1 + 0.2` exactly and money must never be approximate.
 	 *
 	 * It is safe at this one point because the result is immediately rendered
@@ -38,13 +38,13 @@ export function parsePriceToCents(input: string): number | null {
 
 	if (cleaned === '') return null;
 
-	/** At most two decimal places — a third would silently be rounded away. */
+	/** At most two decimal places, a third would silently be rounded away. */
 	if (!/^\d+(\.\d{1,2})?$/.test(cleaned)) return null;
 
 	/**
 	 * Split on the decimal point and work in integers rather than multiplying a
 	 * float by 100. `45.70 * 100` is `4569.999...` in binary floating point,
-	 * which truncates to 4569 — one cent lost, silently, on a perfectly
+	 * which truncates to 4569, one cent lost, silently, on a perfectly
 	 * ordinary price.
 	 */
 	const [whole = '0', fraction = ''] = cleaned.split('.');
@@ -79,7 +79,7 @@ export function formatTimeOfDay(value: string): string {
 
 	/**
 	 * Anchored to an arbitrary date so `Intl` can format it. Only the time part
-	 * is read back out, so which date it is does not matter — but it must be a
+	 * is read back out, so which date it is does not matter, but it must be a
 	 * fixed one, not `new Date()`, or the result could shift across a daylight
 	 * saving boundary.
 	 */
@@ -102,12 +102,12 @@ export const LAMPORTS_PER_SOL = 1_000_000_000;
  * real balance as 0.00 and a real fee as free.
  *
  * @param lamports The amount, or null when the chain could not be reached.
- * @returns A formatted figure, or an em dash — never "0" for an unknown
+ * @returns A formatted figure, or an em dash, never "0" for an unknown
  *          balance. "Solana is unavailable" and "this wallet is empty" lead to
  *          opposite decisions, so they must not look alike.
  */
 export function formatSol(lamports: number | null): string {
-	if (lamports === null) return '—';
+	if (lamports === null) return 'Unknown';
 
 	return `${(lamports / LAMPORTS_PER_SOL).toFixed(4)} SOL`;
 }

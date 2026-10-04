@@ -11,7 +11,7 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Wallet — `/wallet`.
+	 * Wallet, `/wallet`.
 	 */
 	let { data, form }: PageProps = $props();
 
@@ -49,7 +49,7 @@
 		failed would be the worst answer available.
 	-->
 	<Alert tone="error">
-		{data.loadError} Your funds are unaffected — this is a problem reading the
+		{data.loadError} Your funds are unaffected, this is a problem reading the
 		balance, not with the wallet itself.
 	</Alert>
 {:else if !data.wallet}
@@ -106,7 +106,7 @@
 					<Field
 						id="destination"
 						label="Send to"
-						hint="A Solana address on {data.wallet.network}. Check it carefully — a transfer cannot be reversed."
+						hint="A Solana address on {data.wallet.network}. Check it carefully, a transfer cannot be reversed."
 					>
 						{#snippet children({ id, describedBy, invalid })}
 							<input
@@ -141,7 +141,7 @@
 					Emptying the wallet is a separate choice rather than something the
 					user calculates. Solana will not leave an account holding a tiny
 					non-zero balance, so "everything" has to mean everything minus the
-					fee — arithmetic nobody should have to do by hand.
+					fee, arithmetic nobody should have to do by hand.
 				-->
 				<label class="all">
 					<input type="checkbox" name="all" />

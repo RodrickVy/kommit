@@ -4,7 +4,7 @@ import { meetupDay } from '../_shared/meetup_day.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
 
 /**
- * check_in — records that a participant physically reached the meetup place.
+ * check_in, records that a participant physically reached the meetup place.
  *
  *   POST /check_in
  *   { "commitment_id": "<uuid>", "latitude": 49.2276, "longitude": -123.0076 }
@@ -16,7 +16,7 @@ import { fail, guardRequest, json } from '../_shared/http.ts';
  *
  * NO MONEY MOVES HERE. A check-in is evidence, nothing else. Stakes are
  * settled by `complete_commitment` when QR #1 succeeds, or by
- * `process_commitments` when a deadline passes — and both of those read these
+ * `process_commitments` when a deadline passes, and both of those read these
  * rows to decide who was at fault.
  *
  * WHEN: any time on the meetup's calendar day. Not arriving by the end of
@@ -56,7 +56,7 @@ Deno.serve(async (request: Request) => {
 
 	/**
 	 * Rejected before anything else, because an unusable coordinate is almost
-	 * always a denied permission or a device without a fix — and both need the
+	 * always a denied permission or a device without a fix, and both need the
 	 * user to be told what to do, not told they are too far away.
 	 */
 	const submitted = parseCoordinates(body.latitude, body.longitude);
@@ -93,7 +93,7 @@ Deno.serve(async (request: Request) => {
 
 		/**
 		 * Only an active commitment can be checked into. Covers every resolved
-		 * state at once — completed, cancelled, expired, stale, declined — none
+		 * state at once, completed, cancelled, expired, stale, declined, none
 		 * of which can be reopened by arriving somewhere.
 		 */
 		if (commitment.status !== 'accepted') {
@@ -162,7 +162,7 @@ async function record(
 	/**
 	 * A repeat check-in is not an error. Someone refreshing the page, or
 	 * pressing the button twice because the first response was slow, should be
-	 * told where things stand — not told off. Returning early also keeps the
+	 * told where things stand, not told off. Returning early also keeps the
 	 * unique index from rejecting a second verified row.
 	 */
 	if (alreadyCheckedIn) {
@@ -271,7 +271,7 @@ async function record(
 
 	if (applied.error || !applied.data) {
 		/**
-		 * The attempt row stands — the person really was there — but the
+		 * The attempt row stands, the person really was there, but the
 		 * commitment did not accept it, which means it stopped being active.
 		 * Reported rather than silently returning success.
 		 */

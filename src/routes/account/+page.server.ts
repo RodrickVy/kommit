@@ -14,7 +14,7 @@ import type { Actions, PageServerLoad } from './$types';
  * Account.
  *
  * Also the seller's settings: meetup locations and weekly availability. Both
- * belong to the PERSON rather than to any one listing — a seller defines their
+ * belong to the PERSON rather than to any one listing, a seller defines their
  * safe meeting spots and their free evenings once, and every listing they
  * create inherits them.
  *
@@ -35,7 +35,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	 * another's result, and keeping them separate means a failure in one does
 	 * not blank the whole page.
 	 *
-	 * Columns are listed explicitly throughout — never `select('*')`.
+	 * Columns are listed explicitly throughout, never `select('*')`.
 	 */
 	const [profileResult, locationsResult, availabilityResult] = await Promise.all([
 		locals.supabase
@@ -64,7 +64,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 	/**
 	 * Read after the rest, and not in the same `Promise.all`. It calls an Edge
-	 * Function which calls Solana, so it is by far the slowest of these — and a
+	 * Function which calls Solana, so it is by far the slowest of these, and a
 	 * wallet that cannot be read must not stop the page rendering the profile.
 	 */
 	const { wallet, error: walletError } = await loadWallet(locals.supabase);
@@ -154,7 +154,7 @@ export const actions: Actions = {
 		/**
 		 * Matched on day plus start time. Postgres returns a `time` as
 		 * `17:00:00` while the examples hold `17:00`, so the stored value is
-		 * trimmed to the same shape before comparing — otherwise every example
+		 * trimmed to the same shape before comparing, otherwise every example
 		 * would look new and duplicate on each click.
 		 */
 		const alreadyHave = new Set(

@@ -6,7 +6,7 @@ import type { SessionUser } from '#lib/types/auth';
  *
  * WHY THIS NEEDS THE PRIVILEGED CLIENT
  * ------------------------------------
- * `profiles.is_admin` is granted to no role the browser can reach — not to
+ * `profiles.is_admin` is granted to no role the browser can reach, not to
  * `anon`, not to `authenticated`, and not to the user on their own row. So the
  * request-scoped client cannot read it, which is the point: the flag is not
  * something a session can be persuaded to report.
@@ -16,7 +16,7 @@ import type { SessionUser } from '#lib/types/auth';
  * here.
  *
  * NOT A GUARD. It returns a boolean. The guard is in the route, which must
- * decide what to do with a `false` — see `/admin`.
+ * decide what to do with a `false`, see `/admin`.
  */
 export async function isAdminUser(user: SessionUser | null): Promise<boolean> {
 	if (!user) return false;
@@ -37,7 +37,7 @@ export async function isAdminUser(user: SessionUser | null): Promise<boolean> {
 	} catch (cause) {
 		/**
 		 * `adminClient()` throws when SUPABASE_SERVICE_ROLE_KEY is absent, which
-		 * is a legitimate local setup — the app is meant to run without secrets.
+		 * is a legitimate local setup, the app is meant to run without secrets.
 		 *
 		 * Returning false rather than propagating is deliberate: this is called
 		 * from the root layout, so throwing would take down every page in the

@@ -5,7 +5,7 @@ import { transferFunds } from '../_shared/transfer.ts';
 import { getPlatformWallet, getUserWallet } from '../_shared/wallets.ts';
 
 /**
- * request_commitment — the buyer asks to meet, and puts money behind it.
+ * request_commitment, the buyer asks to meet, and puts money behind it.
  *
  *   POST /request_commitment
  *   { "listing_id": "<uuid>", "meetup_location_id": "<uuid>", "scheduled_at": "<iso>" }
@@ -96,7 +96,7 @@ Deno.serve(async (request: Request) => {
 		 *
 		 * Null is what distinguishes an unfunded request from a funded one, and
 		 * the row has to exist before the transfer so the transfer can reference
-		 * it — both in its record and in its idempotency key. A retry therefore
+		 * it, both in its record and in its idempotency key. A retry therefore
 		 * settles against the same commitment rather than charging twice.
 		 */
 		const created = await db
@@ -145,7 +145,7 @@ Deno.serve(async (request: Request) => {
 			 * occupy the one-open-request index, blocking the buyer from trying
 			 * again, and would show the seller a request with no money behind it.
 			 *
-			 * Safe to delete precisely because nothing moved — the failed transfer
+			 * Safe to delete precisely because nothing moved, the failed transfer
 			 * row remains, so the attempt is still on record.
 			 */
 			await db.from('commitments').delete().eq('id', commitmentId);

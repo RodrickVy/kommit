@@ -51,8 +51,8 @@ export function requireUser(user: SessionUser | null, pathname: string): Session
 export function safeRedirectTarget(redirectTo: string | null): string {
 	/**
 	 * Must start with exactly one `/`. A value beginning `//` is
-	 * protocol-relative — the browser reads `//evil.example` as an absolute URL
-	 * on the current scheme — so it is rejected along with anything carrying
+	 * protocol-relative, the browser reads `//evil.example` as an absolute URL
+	 * on the current scheme, so it is rejected along with anything carrying
 	 * its own scheme.
 	 */
 	if (redirectTo && redirectTo.startsWith('/') && !redirectTo.startsWith('//')) {

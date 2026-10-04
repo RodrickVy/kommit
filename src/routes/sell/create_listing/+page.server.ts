@@ -5,7 +5,7 @@ import { CONDITION_ORDER, type ListingCondition } from '#lib/listings/labels';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Create listing — `/sell/create_listing`.
+ * Create listing, `/sell/create_listing`.
  *
  * Collects the item's details and nothing else. It creates a DRAFT and sends
  * the seller to the management page to add photographs and publish.
@@ -43,7 +43,7 @@ export const actions: Actions = {
 		/**
 		 * Parsed to integer cents here rather than stored as text and converted
 		 * later. `45.70 * 100` is 4569.999… in binary floating point, which
-		 * truncates to one cent short — see `parsePriceToCents`.
+		 * truncates to one cent short, see `parsePriceToCents`.
 		 */
 		const priceCents = parsePriceToCents(priceInput);
 

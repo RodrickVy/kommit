@@ -5,7 +5,7 @@ import { PUBLIC_SOLANA_RPC_URL } from '$app/env/public';
  *
  * WHY NOT `@solana/web3.js`
  * ------------------------
- * The SDK is a dependency of the Edge Functions, where it belongs — they are
+ * The SDK is a dependency of the Edge Functions, where it belongs, they are
  * the only code that constructs or signs a transaction. Pulling it into this
  * app to read one number would add a sizeable package, and its Node built-in
  * requirements, to the deployment for a single JSON-RPC call this file makes

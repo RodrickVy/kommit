@@ -4,7 +4,7 @@
 	import type { ActivityItem } from '#lib/server/solana/activity';
 
 	/**
-	 * WalletActivity — everything this wallet has done, newest first.
+	 * WalletActivity, everything this wallet has done, newest first.
 	 *
 	 * Money in is green, money out is red. Each row links to its public
 	 * receipt on Solana Explorer, and to the commitment it belongs to.

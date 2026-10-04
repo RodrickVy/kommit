@@ -6,7 +6,7 @@ import type { SupabaseClient } from 'npm:@supabase/supabase-js@^2.117.0';
  * WHY THIS EXISTS SEPARATELY FROM `market_settings.sol_price_cents`
  * ----------------------------------------------------------------
  * That column is a number an admin typed, and it is documented as display
- * only — fine for showing "about $42" beside a balance, wrong for deciding an
+ * only, fine for showing "about $42" beside a balance, wrong for deciding an
  * amount of money to move. Stakes avoid the problem entirely by recording the
  * exact lamports they transferred, so a refund never reconverts.
  *

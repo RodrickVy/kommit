@@ -5,13 +5,13 @@ import { settleStake } from '../_shared/stake.ts';
 import { meetupDay } from '../_shared/meetup_day.ts';
 
 /**
- * complete_commitment — processes QR #1 and closes the commitment successfully.
+ * complete_commitment, processes QR #1 and closes the commitment successfully.
  *
  *   POST /complete_commitment
  *   { "commitment_id": "<uuid>", "token": "<from the QR>" }
  *
  * THE MEETUP OBLIGATION IS NOW FULFILLED. Both stakes come back. Nothing is
- * bought — the buyer may inspect the item and walk away with no penalty
+ * bought, the buyer may inspect the item and walk away with no penalty
  * whatsoever, which is the entire premise of the product.
  *
  * Only the BUYER may call this. The seller shows the code and the buyer scans
@@ -83,7 +83,7 @@ Deno.serve(async (request: Request) => {
 		if (commitment.meetup_verified_at || commitment.status === 'completed') {
 			/**
 			 * Not an error. A buyer who scans twice, or reloads the page, should
-			 * see that it worked — telling them the code is used would read as a
+			 * see that it worked, telling them the code is used would read as a
 			 * failure for something that succeeded.
 			 */
 			return json({
@@ -134,18 +134,18 @@ Deno.serve(async (request: Request) => {
  *
  * THE ORDER IS THE DESIGN, and each step guards the next:
  *
- *   1. consume the token  — atomic. Two simultaneous scans both validate,
+ *   1. consume the token , atomic. Two simultaneous scans both validate,
  *                           because validating is a read; only one consumes.
  *                           This is what makes a double scan impossible.
- *   2. claim the status   — compare-and-set on `accepted`. If something else
+ *   2. claim the status  , compare-and-set on `accepted`. If something else
  *                           resolved the commitment in between, the token is
  *                           released so a retry is still possible.
- *   3. settle both stakes — last, because they are the only irreversible part.
+ *   3. settle both stakes, last, because they are the only irreversible part.
  *                           By here the commitment definitively belongs to
  *                           this call.
  *
  * Settling before claiming would allow a refund against a commitment that was
- * simultaneously being cancelled — paying the stake back and forfeiting it.
+ * simultaneously being cancelled, paying the stake back and forfeiting it.
  */
 async function complete(
 	db: ReturnType<typeof serviceClient>,
@@ -180,7 +180,7 @@ async function complete(
 
 	/**
 	 * The business record of the meetup. Its unique constraint on
-	 * `commitment_id` is a second guarantee behind the token's single use —
+	 * `commitment_id` is a second guarantee behind the token's single use,
 	 * wanted here specifically, because the consequence of a duplicate would be
 	 * a second pair of refunds out of the treasury.
 	 */
@@ -194,8 +194,8 @@ async function complete(
 
 	if (recorded.error) {
 		/**
-		 * Logged, not fatal. The commitment is legitimately complete — the
-		 * status and the timestamp say so — and refusing now would leave two
+		 * Logged, not fatal. The commitment is legitimately complete, the
+		 * status and the timestamp say so, and refusing now would leave two
 		 * people with their stakes still held after a meetup they genuinely
 		 * completed. The verification row is evidence, and losing it is worth
 		 * less than withholding the money.

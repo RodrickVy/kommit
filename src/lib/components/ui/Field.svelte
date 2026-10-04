@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 
 	/**
-	 * Field — a labelled form control with inline validation feedback.
+	 * Field, a labelled form control with inline validation feedback.
 	 *
 	 * Every input in kommitly goes through this, so that the label/control
 	 * association, the error wiring and the spacing are identical everywhere.
@@ -22,7 +22,7 @@
 		/** Used for the control `id`, the label's `for`, and the form field name. */
 		id: string;
 
-		/** Visible label. Always present — placeholders are not labels. */
+		/** Visible label. Always present, placeholders are not labels. */
 		label: string;
 
 		/**

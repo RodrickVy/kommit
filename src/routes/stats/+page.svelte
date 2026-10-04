@@ -2,7 +2,7 @@
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 
 	/**
-	 * Stats — `/stats`.
+	 * Stats, `/stats`.
 	 *
 	 * Intentionally empty. The route exists so that navigation, the layout and
 	 * the page title are in place; its content is built in its own change,

@@ -2,7 +2,7 @@ import { requireUser } from '#lib/server/auth/guards';
 import type { PageServerLoad } from './$types';
 
 /**
- * Sell — the seller's own listings.
+ * Sell, the seller's own listings.
  *
  * Guarded. Hiding the link in the navigation is presentation, not access
  * control: anyone can type the URL, and this is where that is actually stopped.
@@ -24,7 +24,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.eq('seller_id', user.id)
 			.eq('listing_images.position', 0)
 			.order('created_at', { ascending: false }),
-		/** Counts only — buyers cannot request a meetup until both exist. */
+		/** Counts only, buyers cannot request a meetup until both exist. */
 		locals.supabase
 			.from('meetup_locations')
 			.select('id', { count: 'exact', head: true })

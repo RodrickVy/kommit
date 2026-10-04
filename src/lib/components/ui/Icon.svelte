@@ -2,7 +2,7 @@
 	import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
 
 	/**
-	 * Icon — a Font Awesome Free icon, drawn as inline SVG.
+	 * Icon, a Font Awesome Free icon, drawn as inline SVG.
 	 *
 	 * Rendered from the icon's own path data rather than the Font Awesome web
 	 * font or its runtime, so nothing loads from a third party, only the icons

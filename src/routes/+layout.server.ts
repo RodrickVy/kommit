@@ -2,7 +2,7 @@ import { isAdminUser } from '#lib/server/auth/admin';
 import type { LayoutServerLoad } from './$types';
 
 /**
- * Root layout load — the top of the data hierarchy.
+ * Root layout load, the top of the data hierarchy.
  *
  * This is the ONLY place the signed-in user is loaded. Every route inherits
  * the result, and no page should resolve the user for itself.
@@ -14,7 +14,7 @@ import type { LayoutServerLoad } from './$types';
  * route params, properties of `url`, anything registered with `depends()`,
  * and the parent's data.
  *
- * This function touches none of those — it reads only `locals`. So after the
+ * This function touches none of those, it reads only `locals`. So after the
  * first server render it is NOT re-run as the user moves between
  * `/discover`, `/wallet` and `/commitments`. The header keeps rendering the
  * same user object without a single extra request.
@@ -28,7 +28,7 @@ import type { LayoutServerLoad } from './$types';
  * ---------------------------
  * Sign-in and sign-out change the answer, and both go through a server form
  * action. After an action SvelteKit re-runs the page's load functions, and a
- * `redirect` from an action triggers a fresh navigation — so the new user is
+ * `redirect` from an action triggers a fresh navigation, so the new user is
  * picked up without anything here needing to opt in. With JavaScript
  * disabled it is a full page load, which has the same effect.
  *
@@ -50,7 +50,7 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	 * The admin flag belongs to the shell: it decides whether the header shows
 	 * an Admin link, which is the definition of what this layout is for.
 	 *
-	 * It costs one primary-key lookup, and only for signed-in users —
+	 * It costs one primary-key lookup, and only for signed-in users,
 	 * `isAdminUser` returns false immediately for an anonymous visitor without
 	 * touching the database. Because this load still depends on nothing
 	 * trackable, the query runs on a full page load and not again as the user
@@ -59,7 +59,13 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	 * Hiding the link is cosmetic. `/admin` answers 404 to anyone who is not an
 	 * administrator, whatever the navigation says.
 	 */
-	const isAdmin = await isAdminUser(user);
+	const [isAdmin, profile] = await Promise.all([
+		isAdminUser(user),
+		/** The name shown in the header in place of the private email. */
+		user
+			? locals.supabase.from('profiles').select('display_name').eq('id', user.id).maybeSingle()
+			: Promise.resolve({ data: null })
+	]);
 
 	/**
 	 * Returned as `data.user` to the layout and, through inheritance, to
@@ -70,5 +76,5 @@ export const load: LayoutServerLoad = async ({ locals }) => {
 	 * full Supabase user object would ship its metadata, identity list and
 	 * timestamps to the browser on every single page view.
 	 */
-	return { user, isAdmin };
+	return { user, isAdmin, displayName: profile.data?.display_name ?? null };
 };

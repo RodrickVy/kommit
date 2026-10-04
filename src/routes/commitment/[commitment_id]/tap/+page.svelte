@@ -8,13 +8,13 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Meetup verification — `/commitment/[commitment_id]/tap`.
+	 * Meetup verification, `/commitment/[commitment_id]/tap`.
 	 *
 	 * Where QR #1 lands. The buyer scans the seller's code with their phone
 	 * camera, which opens this page, and the page asks them to confirm.
 	 *
 	 * SCANNING DOES NOT COMPLETE ANYTHING. The token arrives in the URL, so
-	 * anything that happened on load would happen to whoever opened the link —
+	 * anything that happened on load would happen to whoever opened the link,
 	 * including a preview fetcher in a messaging app. Completion is a POST the
 	 * person makes.
 	 *
@@ -52,7 +52,7 @@
 					Your commitment stake has been returned to your wallet.
 				{:else}
 					The meetup is verified. Your stake refund is still processing and will
-					complete shortly — nothing is lost.
+					complete shortly, nothing is lost.
 				{/if}
 			</p>
 
@@ -76,19 +76,19 @@
 			<div class="banner">
 				<Alert tone="info">
 					This confirms you <strong>met</strong>. It returns both commitment
-					stakes and buys nothing — no money leaves your wallet.
+					stakes and buys nothing, no money leaves your wallet.
 				</Alert>
 			</div>
 
 			<dl class="pairs">
 				<div class="pair">
 					<dt>Your stake</dt>
-					<dd>{formatPrice(data.stakeCents)} — returned when you confirm</dd>
+					<dd>{formatPrice(data.stakeCents)}, returned when you confirm</dd>
 				</div>
 				{#if data.priceCents !== null}
 					<div class="pair">
 						<dt>The item's price</dt>
-						<dd>{formatPrice(data.priceCents)} — only if you decide to buy, later</dd>
+						<dd>{formatPrice(data.priceCents)}, only if you decide to buy, later</dd>
 					</div>
 				{/if}
 			</dl>

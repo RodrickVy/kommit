@@ -3,7 +3,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 
 	/**
-	 * RefreshButton — re-runs the page's load, which re-reads balances from
+	 * RefreshButton, re-runs the page's load, which re-reads balances from
 	 * Solana. Balances change outside the app (a deposit landing, a scheduled
 	 * settlement), so any page showing one offers this.
 	 */

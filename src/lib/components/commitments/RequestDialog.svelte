@@ -3,7 +3,7 @@
 	import RequestPanel from '#lib/components/commitments/RequestPanel.svelte';
 
 	/**
-	 * RequestDialog — request a meetup straight from a Discover card.
+	 * RequestDialog, request a meetup straight from a Discover card.
 	 *
 	 * Fetches the listing's places and times only when opened, so a grid of
 	 * cards costs nothing until someone actually wants to request one.
@@ -23,6 +23,12 @@
 		hasAvailability: boolean;
 		slots: { startsAt: string }[];
 		stakeCents: number | null;
+		fee: {
+			baseFeeCents: number;
+			reputation: number;
+			marketReputation: number;
+			feeCents: number;
+		} | null;
 		minimumLeadHours: number | null;
 	};
 

@@ -9,7 +9,7 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Purchase — `/commitment/[commitment_id]/pay`.
+	 * Purchase, `/commitment/[commitment_id]/pay`.
 	 *
 	 * Where QR #2 lands. Separate from the meetup in every respect: the
 	 * commitment is already fulfilled, both stakes are already back, and
@@ -41,7 +41,7 @@
 				<div class="fund">
 					<Button href="/wallet/fund_wallet" variant="secondary" size="sm">Add funds</Button>
 					<p class="fund-note">
-						Nothing was charged, and your commitment is unaffected — it is already
+						Nothing was charged, and your commitment is unaffected, it is already
 						complete and your stake is back. Add funds and try again, or walk
 						away.
 					</p>
@@ -78,7 +78,7 @@
 
 			<!--
 				The rate and its source are both shown. A buyer agreed to a dollar
-				price, and the SOL figure is a conversion made at this moment — so
+				price, and the SOL figure is a conversion made at this moment, so
 				the page says what it converted at rather than presenting the result
 				as if it were the price itself.
 			-->
@@ -87,7 +87,7 @@
 				{#if q.rate_source === 'coingecko'}
 					(live rate)
 				{:else}
-					(the configured rate — a live quote was unavailable)
+					(the configured rate, a live quote was unavailable)
 				{/if}
 			</p>
 
@@ -131,7 +131,7 @@
 			<div class="banner">
 				<Alert tone="info">
 					Your commitment is already complete and your stake is back. Buying is
-					optional — you can close this page and owe nothing.
+					optional, you can close this page and owe nothing.
 				</Alert>
 			</div>
 

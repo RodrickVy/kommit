@@ -9,7 +9,7 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Discover — `/discover`.
+	 * Discover, `/discover`.
 	 */
 	let { data }: PageProps = $props();
 
@@ -108,7 +108,7 @@
 		{:else}
 			<p class="empty">
 				Nothing listed yet. <a href="/join">Create an account</a> and you can add the
-				first one — sample listings are included if you want them.
+				first one, sample listings are included if you want them.
 			</p>
 		{/if}
 	</Panel>

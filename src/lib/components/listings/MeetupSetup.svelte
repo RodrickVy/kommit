@@ -7,7 +7,7 @@
 	import { DAY_LABELS } from '#lib/listings/labels';
 
 	/**
-	 * MeetupSetup — where a seller will meet, and when.
+	 * MeetupSetup, where a seller will meet, and when.
 	 *
 	 * Both belong to the seller and apply to every listing they have. Shown on
 	 * the account page and on the seller's own listing page; the host route

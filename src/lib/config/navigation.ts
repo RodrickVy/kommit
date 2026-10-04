@@ -5,7 +5,7 @@
  * header renders from this array; nothing hardcodes a link label or path.
  * Adding a destination means adding one entry here.
  *
- * A route still has to exist under `src/routes` — this file describes how to
+ * A route still has to exist under `src/routes`, this file describes how to
  * present the navigation, it does not create routes.
  */
 
@@ -15,7 +15,7 @@
  * THIS IS PRESENTATION ONLY AND ENFORCES NOTHING.
  *
  * Hiding a link does not protect the route behind it: anyone can type the URL.
- * Access control belongs in two places and nowhere else —
+ * Access control belongs in two places and nowhere else,
  *
  *   1. a guard in the route's own `+layout.server.ts` or `+page.server.ts`,
  *      which redirects an anonymous visitor to `/signin`
@@ -60,7 +60,7 @@ export interface NavItem {
  * Primary navigation, in the order it is rendered.
  *
  * Kept flat deliberately. Once this outgrows a single row it should become
- * grouped sections rather than a longer list — that decision belongs with
+ * grouped sections rather than a longer list, that decision belongs with
  * the header component, not here.
  */
 export const PRIMARY_NAV: readonly NavItem[] = [

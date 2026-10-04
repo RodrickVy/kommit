@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 
 	/**
-	 * Panel — the standard content surface.
+	 * Panel, the standard content surface.
 	 *
 	 * Every boxed region in kommitly is a Panel: cards, form wrappers, summary
 	 * blocks, empty states. Using it rather than a bare `<div>` is what keeps
@@ -11,7 +11,7 @@
 	 * The cut corners and the hairline come from the global `.k-cut` and
 	 * `.k-outline` classes in `app.css`, not from this file. This component
 	 * deliberately does not set `box-shadow`, so that `.k-outline` stays in
-	 * charge of the border — see the note on inset shadows in `app.css`.
+	 * charge of the border, see the note on inset shadows in `app.css`.
 	 */
 	interface Props {
 		/**

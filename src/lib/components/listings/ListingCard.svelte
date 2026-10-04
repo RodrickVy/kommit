@@ -6,7 +6,7 @@
 	import { listingImageUrl } from '#lib/listings/images';
 
 	/**
-	 * ListingCard — one listing in a grid.
+	 * ListingCard, one listing in a grid.
 	 *
 	 * Used by both Discover and a seller's own listings page, so the two cannot
 	 * drift apart. The only difference between them is whether the status badge
@@ -138,7 +138,7 @@
 	.title {
 		font-size: var(--k-text-base);
 		font-weight: 600;
-		/* Two lines, then ellipsis — long titles must not change card height. */
+		/* Two lines, then ellipsis, long titles must not change card height. */
 		display: -webkit-box;
 		-webkit-box-orient: vertical;
 		-webkit-line-clamp: 2;

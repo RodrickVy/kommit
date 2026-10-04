@@ -3,7 +3,7 @@ import { fail, guardRequest, json } from '../_shared/http.ts';
 import { createQrToken } from '../_shared/qr.ts';
 
 /**
- * create_payment_qr — issues QR #2, the purchase code.
+ * create_payment_qr, issues QR #2, the purchase code.
  *
  *   POST /create_payment_qr
  *   { "commitment_id": "<uuid>" }

@@ -21,11 +21,11 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Listing detail — `/sell/[listing_id]`.
+	 * Listing detail, `/sell/[listing_id]`.
 	 *
 	 * One URL, two views. `data.isOwner` is decided on the server from the
 	 * verified session, so the management controls cannot be revealed by editing
-	 * anything in the browser — and even if the markup were forced to render,
+	 * anything in the browser, and even if the markup were forced to render,
 	 * every action re-checks ownership before it writes.
 	 */
 	let { data, form }: PageProps = $props();
@@ -262,7 +262,7 @@
 					{#if data.listing.profiles?.reputation == null}
 						<span class="muted">Not calculated yet</span>
 					{:else}
-						{data.listing.profiles.reputation}
+						{Number(data.listing.profiles.reputation).toFixed(3)}
 					{/if}
 				</dd>
 			</dl>
@@ -284,6 +284,7 @@
 						hasAvailability={data.availability.length > 0}
 						slots={data.slots}
 						stakeCents={data.stakeCents}
+						fee={data.fee}
 						minimumLeadHours={data.minimumLeadHours}
 					/>
 				</div>
@@ -315,7 +316,7 @@
 
 					<!--
 						A native confirm rather than a custom modal. Deleting destroys the
-						photographs too and cannot be undone, so it earns a stop — and the
+						photographs too and cannot be undone, so it earns a stop, and the
 						native dialog is keyboard accessible and impossible to mis-style.
 					-->
 					<form
@@ -374,8 +375,8 @@
 
 	.layout {
 		display: grid;
-		/* Side column first on narrow screens is wrong — the photographs and
-		   description matter more — so a single column keeps source order, and
+		/* Side column first on narrow screens is wrong, the photographs and
+		   description matter more, so a single column keeps source order, and
 		   the sidebar only splits off once there is room for it. */
 		grid-template-columns: 1fr;
 		gap: var(--k-space-4);

@@ -7,7 +7,7 @@ export type CommitmentParty = Database['public']['Enums']['commitment_party'];
  * Status labels written from the READER's point of view where it matters.
  *
  * "Declined" and "Cancelled" mean different things to the person who did it
- * and the person it happened to, so the detail page says who — these are the
+ * and the person it happened to, so the detail page says who, these are the
  * neutral short forms used in lists and badges.
  */
 export const COMMITMENT_STATUS_LABELS: Record<CommitmentStatus, string> = {
@@ -22,7 +22,7 @@ export const COMMITMENT_STATUS_LABELS: Record<CommitmentStatus, string> = {
 };
 
 /**
- * Which statuses are still live — the commitment is going somewhere.
+ * Which statuses are still live, the commitment is going somewhere.
  * Mirrors what the database's partial unique indexes treat as holding a slot.
  */
 export const LIVE_STATUSES: readonly CommitmentStatus[] = ['pending', 'accepted'];
@@ -39,7 +39,7 @@ export type CommitmentEventType = Database['public']['Enums']['commitment_event_
 /**
  * What each recorded event says, in plain words.
  *
- * Phrased from nobody's point of view in particular — the timeline shows the
+ * Phrased from nobody's point of view in particular, the timeline shows the
  * actor's role beside each entry, so "Seller accepted" would be redundant and
  * would read oddly to the seller themselves.
  */

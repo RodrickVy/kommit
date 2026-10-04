@@ -3,7 +3,7 @@ import { fail, guardRequest, json } from '../_shared/http.ts';
 import { settleStake, type Party } from '../_shared/stake.ts';
 
 /**
- * cancel_commitment — either party backs out after acceptance.
+ * cancel_commitment, either party backs out after acceptance.
  *
  *   POST /cancel_commitment   { "commitment_id": "<uuid>" }
  *
@@ -60,7 +60,7 @@ Deno.serve(async (request: Request) => {
 
 		/**
 		 * Only an accepted commitment can be cancelled. Before acceptance there
-		 * is nothing to back out of — the seller declines and the buyer
+		 * is nothing to back out of, the seller declines and the buyer
 		 * withdraws, and neither costs anything. After resolution there is
 		 * nothing left to cancel.
 		 */

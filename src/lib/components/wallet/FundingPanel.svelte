@@ -8,7 +8,7 @@
 	 *
 	 * Shared by `/wallet/fund_wallet`, where a user funds their own wallet, and
 	 * by `/admin`, where the operator funds the Main Wallet. The two pages are
-	 * the same problem — here is an address, here is how to send to it — and
+	 * the same problem, here is an address, here is how to send to it, and
 	 * writing it twice would mean the devnet warning eventually appeared on only
 	 * one of them.
 	 *
@@ -19,7 +19,7 @@
 	 */
 
 	interface Props {
-		/** Base58 address to display. Shown in full — a truncated address is useless here. */
+		/** Base58 address to display. Shown in full, a truncated address is useless here. */
 		address: string;
 
 		/** The cluster, from `PUBLIC_SOLANA_NETWORK`. Named in the warning, because sending on the wrong one is unrecoverable. */
@@ -74,7 +74,7 @@
 			<!--
 				Always on white, whatever the theme. A scanner needs the contrast,
 				and `img`-style alt text is supplied by the caption rather than the
-				SVG, which is marked decorative — the address beside it is the
+				SVG, which is marked decorative, the address beside it is the
 				accessible form of the same information.
 			-->
 			<div class="qr" aria-hidden="true">
@@ -109,7 +109,7 @@
 
 	<ol class="steps">
 		<li>
-			<strong>Install Solflare</strong> — a Solana wallet, available as a browser
+			<strong>Install Solflare</strong>, a Solana wallet, available as a browser
 			extension or a phone app.
 		</li>
 		<li>
@@ -126,7 +126,7 @@
 			with the address above.
 		</li>
 		<li>
-			<strong>Send to the address above</strong> — paste it, or scan the code with
+			<strong>Send to the address above</strong>, paste it, or scan the code with
 			the Solflare app. It usually arrives within a few seconds.
 		</li>
 		<li><strong>Refresh the balance</strong> to see it here.</li>

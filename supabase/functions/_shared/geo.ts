@@ -1,9 +1,9 @@
 /**
- * `validate_check_in` from the function contracts — internal function #17.
+ * `validate_check_in` from the function contracts, internal function #17.
  *
  * A PURE function. It compares two coordinates against a radius and returns
  * the verdict. It does not ask the browser for a location, write to the
- * database, start the no-show clock or decide anything about the commitment —
+ * database, start the no-show clock or decide anything about the commitment,
  * all of that belongs to `check_in`, which calls this.
  *
  * Kept separate precisely because it is the only part of check-in that is
@@ -21,7 +21,7 @@ export interface Coordinates {
  *
  * Haversine treats the Earth as a sphere, so distances carry up to roughly
  * 0.5% error against the true ellipsoid. Over the few hundred metres this is
- * used for, that is about a metre — far below the accuracy of any phone GPS,
+ * used for, that is about a metre, far below the accuracy of any phone GPS,
  * so the extra complexity of a Vincenty solution would buy nothing.
  */
 const EARTH_RADIUS_METRES = 6_371_008.8;
@@ -48,7 +48,7 @@ export function distanceMetres(from: Coordinates, to: Coordinates): number {
 
 	/**
 	 * `atan2` with the two-argument form, not `asin(sqrt(a))`. They agree
-	 * mathematically, but `asin` is numerically unstable as `a` approaches 1 —
+	 * mathematically, but `asin` is numerically unstable as `a` approaches 1,
 	 * i.e. for antipodal points. Not a case this product produces, but the
 	 * stable form costs nothing.
 	 */
@@ -60,7 +60,7 @@ export function distanceMetres(from: Coordinates, to: Coordinates): number {
  *
  * Browsers hand back `null` island (0, 0) when a device has no fix, and
  * JavaScript will happily carry `NaN` through every calculation below to
- * produce a distance of `NaN` — which compares false against any radius and so
+ * produce a distance of `NaN`, which compares false against any radius and so
  * would silently read as "too far away" rather than "no location". Rejected
  * here so the user is told the real problem.
  */

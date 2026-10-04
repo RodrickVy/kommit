@@ -8,7 +8,7 @@
 	import type { PageProps } from './$types';
 
 	/**
-	 * Sign in — `/signin`.
+	 * Sign in, `/signin`.
 	 *
 	 * `form` holds whatever the action returned on failure: field errors, a
 	 * form-level message, and the email so it does not have to be retyped.
@@ -45,8 +45,8 @@
 
 		<!--
 			`use:enhance` submits without a full page reload when JavaScript is
-			available. The form still works entirely without it — the action is a
-			normal POST — which is why the markup is a real <form> with real
+			available. The form still works entirely without it, the action is a
+			normal POST, which is why the markup is a real <form> with real
 			inputs rather than click handlers.
 		-->
 		<form
@@ -105,7 +105,7 @@
 
 <style>
 	.auth {
-		/* A form this short should not stretch across a desktop monitor —
+		/* A form this short should not stretch across a desktop monitor,
 		   long input lines are harder to scan and look unfinished. */
 		max-width: 28rem;
 		margin-inline: auto;

@@ -4,7 +4,7 @@ import { safeRedirectTarget } from '#lib/server/auth/guards';
 import type { RequestHandler } from './$types';
 
 /**
- * Auth callback — `/auth/callback`.
+ * Auth callback, `/auth/callback`.
  *
  * Where every email link lands: confirmations, password resets, magic links.
  *
@@ -15,7 +15,7 @@ import type { RequestHandler } from './$types';
  * one-time credential in the query string. Something has to trade that
  * credential for a session and write the session cookies.
  *
- * Without this endpoint the link "works" — the browser arrives at the site —
+ * Without this endpoint the link "works", the browser arrives at the site,
  * and the visitor is still signed out, holding a URL full of parameters
  * nothing reads. That is the worst kind of broken, because it looks fine.
  *
@@ -49,7 +49,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 	/**
 	 * Where to send the visitor afterwards. Passed through `safeRedirectTarget`
-	 * because it comes from a URL anyone can construct — without that check,
+	 * because it comes from a URL anyone can construct, without that check,
 	 * `/auth/callback?next=https://evil.example` would bounce a freshly
 	 * authenticated user to another site, which is about as convincing as
 	 * phishing gets.
@@ -59,7 +59,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 	/**
 	 * Supabase reports a refused link by redirecting here with its own error
 	 * parameters rather than by failing. The commonest by far is an expired
-	 * link, so it gets its own message — "something went wrong" would leave
+	 * link, so it gets its own message, "something went wrong" would leave
 	 * someone clicking the same dead link repeatedly.
 	 */
 	const errorCode = url.searchParams.get('error_code') ?? url.searchParams.get('error');
@@ -83,7 +83,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 			/**
 			 * The session cookies are written by the `setAll` handler in
 			 * `request-client.ts`, which also attaches the no-store cache headers
-			 * — essential here, because a cached redirect carrying a session
+			 *, essential here, because a cached redirect carrying a session
 			 * cookie would hand one person's account to the next visitor.
 			 */
 			redirect(303, next);
@@ -101,7 +101,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
 
 	/**
 	 * Fell through: no recognised parameters, or verification failed. Both mean
-	 * the same thing to the visitor — this link did not work — so they are sent
+	 * the same thing to the visitor, this link did not work, so they are sent
 	 * somewhere they can act rather than shown an error page they cannot.
 	 */
 	redirect(

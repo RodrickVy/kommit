@@ -13,7 +13,7 @@ export const DISCOVER_SORTS = {
 
 export type DiscoverSort = keyof typeof DISCOVER_SORTS;
 
-/** "All", then each condition — one tab apiece. */
+/** "All", then each condition, one tab apiece. */
 export const CONDITION_TABS = [
 	{ key: 'all', label: 'All' },
 	...CONDITION_ORDER.map((key) => ({ key, label: CONDITION_LABELS[key] }))

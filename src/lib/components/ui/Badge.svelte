@@ -2,7 +2,7 @@
 	import type { Snippet } from 'svelte';
 
 	/**
-	 * Badge — a short status label.
+	 * Badge, a short status label.
 	 *
 	 * Used for listing status. Carries its meaning in text, never in colour
 	 * alone: someone who cannot distinguish the tones still reads "Draft".

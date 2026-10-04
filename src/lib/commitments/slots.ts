@@ -21,7 +21,7 @@ export interface AvailabilityRule {
 
 /** A specific moment a buyer can choose. */
 export interface Slot {
-	/** The instant, as an ISO string — what goes into `scheduled_at`. */
+	/** The instant, as an ISO string, what goes into `scheduled_at`. */
 	readonly startsAt: string;
 	/** The rule that produced it, for display. */
 	readonly ruleId: string;
@@ -63,7 +63,7 @@ function offsetMs(instant: Date, timeZone: string): number {
  * Converts a wall-clock time in a named zone to the real instant.
  *
  * Two passes, and the second is not redundant. The offset has to be looked up
- * at *some* instant, but the instant is what we are trying to find — so the
+ * at *some* instant, but the instant is what we are trying to find, so the
  * first pass guesses using the offset at the naive time, and the second checks
  * whether the offset actually differs at the answer. They disagree exactly
  * across a daylight-saving boundary, which is when getting this wrong moves a
@@ -134,7 +134,7 @@ export function generateSlots(
 		/**
 		 * Walk forward a day at a time rather than computing which dates fall
 		 * on the right weekday. The weekday has to be evaluated in the SELLER's
-		 * zone — "Tuesday" there can be Monday or Wednesday in UTC — and
+		 * zone, "Tuesday" there can be Monday or Wednesday in UTC, and
 		 * stepping through days lets the zone answer that question each time.
 		 */
 		for (let dayOffset = 0; dayOffset <= horizonDays; dayOffset += 1) {

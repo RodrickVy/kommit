@@ -12,7 +12,7 @@ import type { Database } from '#lib/supabase/database.types';
  * ---------------------------
  * `getSession()` decodes the access token out of the request's cookies and
  * returns it WITHOUT checking the signature. Cookies are client-supplied, so
- * its result is an unverified claim about identity — anyone can hand us a
+ * its result is an unverified claim about identity, anyone can hand us a
  * cookie containing any `sub` they like. Using it for an authorisation
  * decision is an authentication bypass.
  *
@@ -29,7 +29,7 @@ import type { Database } from '#lib/supabase/database.types';
  *     caches. After the first request there is normally no network call at
  *     all. If the project still signs with a symmetric secret rather than an
  *     asymmetric key, it transparently falls back to asking the Auth server,
- *     so this is never less correct — only sometimes slower.
+ *     so this is never less correct, only sometimes slower.
  *
  * It also refreshes the session first if the token is about to expire, which
  * is what triggers the `setAll` cookie write in `request-client.ts`.
@@ -44,7 +44,7 @@ export async function verifyUser(supabase: SupabaseClient<Database>): Promise<Se
 
 	/**
 	 * Three outcomes are collapsed into `null` here, because the app's
-	 * response to all of them is identical — treat the request as anonymous:
+	 * response to all of them is identical, treat the request as anonymous:
 	 *
 	 *   - `error` set: the token was present but failed verification, is
 	 *     expired, or the Auth server could not be reached
@@ -64,7 +64,7 @@ export async function verifyUser(supabase: SupabaseClient<Database>): Promise<Se
 	 * Map the JWT's claims onto our own narrow domain type. `sub` and `role`
 	 * are guaranteed present by Supabase; `email` is absent for phone and
 	 * anonymous sign-ins, so it is normalised to `null` rather than left
-	 * `undefined` — one representation of "no email", not two.
+	 * `undefined`, one representation of "no email", not two.
 	 */
 	return {
 		id: claims.sub,

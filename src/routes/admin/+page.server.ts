@@ -9,11 +9,11 @@ import { adminClient } from '#lib/server/supabase/admin-client';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Admin — `/admin`.
+ * Admin, `/admin`.
  *
  * The whole operator surface, and deliberately small. Two jobs:
  *
- *   1. fund the Main Wallet — it pays every refund, so an empty treasury means
+ *   1. fund the Main Wallet, it pays every refund, so an empty treasury means
  *      every settlement fails
  *   2. decide which charity receives forfeited stakes, and keep the charity
  *      records right
@@ -28,7 +28,7 @@ import type { Actions, PageServerLoad } from './$types';
  * WHY THE PRIVILEGED CLIENT IS USED HERE
  * --------------------------------------
  * `platform_wallet` has RLS enabled with no policies at all, and `charities`
- * has no write policy — both are reachable only by the service role. That is
+ * has no write policy, both are reachable only by the service role. That is
  * correct: the treasury and the donation destination must not be writable from
  * any session, however the session was obtained.
  *
@@ -66,7 +66,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 		/**
 		 * The wallet arrives as a single object, not a list, because
-		 * `wallets.charity_id` is unique — a charity has at most one wallet and
+		 * `wallets.charity_id` is unique, a charity has at most one wallet and
 		 * PostgREST knows it.
 		 */
 		db
@@ -77,7 +77,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 
 		db
 			.from('market_settings')
-			.select('active_charity_id, currency_code, sol_price_cents, check_in_radius_metres, check_in_window_minutes, qr_token_expiry_minutes, base_commitment_fee_cents')
+			.select('active_charity_id, currency_code, sol_price_cents, check_in_radius_metres, check_in_window_minutes, qr_token_expiry_minutes, base_commitment_fee_cents, min_commitment_fee_cents, max_commitment_fee_cents, reputation_outcome_weight, reputation_checkin_weight, market_reputation')
 			.eq('id', 1)
 			.maybeSingle()
 	]);
@@ -136,7 +136,7 @@ const problem = (actionError: string): ActionResult => ({ actionError, message: 
  * Confirms the caller administers the marketplace, for an ACTION.
  *
  * Re-checked on every action rather than trusted from the load. A form POST is
- * a separate request, and admin rights could have been revoked in between —
+ * a separate request, and admin rights could have been revoked in between,
  * and nothing stops a POST being sent without ever loading the page.
  */
 async function requireAdmin(locals: App.Locals, pathname: string) {
@@ -175,6 +175,66 @@ function websiteUrl(data: FormData): { ok: true; value: string | null } | { ok: 
 
 export const actions: Actions = {
 	/**
+	 * The commitment fee and the reputation weights.
+	 *
+	 * Validated here so the admin gets a sentence, and constrained again in the
+	 * database. Changing a weight re-scores every profile straight away (a
+	 * trigger does it), and every change is kept in market_settings_history.
+	 * Commitments already agreed keep the stake they were agreed at.
+	 */
+	updateMarketSettings: async ({ locals, request, url }) => {
+		const user = await requireAdmin(locals, url.pathname);
+		const data = await request.formData();
+
+		const dollars = (field: string) => {
+			const raw = text(data, field);
+			if (raw === null || !/^\d+(\.\d{1,2})?$/.test(raw)) return null;
+			return Math.round(Number(raw) * 100);
+		};
+		const weight = (field: string) => {
+			const raw = text(data, field);
+			const value = raw === null ? NaN : Number(raw);
+			return Number.isFinite(value) && value >= 0 && value <= 1 ? value : null;
+		};
+
+		const base = dollars('base_fee');
+		const min = dollars('min_fee');
+		const max = dollars('max_fee');
+		const outcome = weight('outcome_weight');
+		const checkin = weight('checkin_weight');
+
+		if (base === null || min === null || max === null) {
+			return fail(400, problem('Fees must be amounts like 15 or 15.00.'));
+		}
+		if (!(min <= base && base <= max)) {
+			return fail(400, problem('The base fee has to sit between the minimum and the maximum.'));
+		}
+		if (outcome === null || checkin === null) {
+			return fail(400, problem('Weights must be numbers between 0 and 1, like 0.20.'));
+		}
+
+		const { error: updateError } = await adminClient()
+			.from('market_settings')
+			.update({
+				base_commitment_fee_cents: base,
+				min_commitment_fee_cents: min,
+				max_commitment_fee_cents: max,
+				reputation_outcome_weight: outcome,
+				reputation_checkin_weight: checkin,
+				updated_by: user.id,
+				updated_at: new Date().toISOString()
+			})
+			.eq('id', 1);
+
+		if (updateError) {
+			console.error('[admin] could not update market settings', updateError);
+			return fail(500, problem('The market settings could not be saved.'));
+		}
+
+		return ok('Market settings saved. Reputations and fees now use the new values.');
+	},
+
+	/**
 	 * Chooses which charity receives forfeited stakes from now on.
 	 *
 	 * Only future forfeits follow the change. Every past one recorded the
@@ -193,7 +253,7 @@ export const actions: Actions = {
 		/**
 		 * The charity must exist, be active, AND have a wallet. Selecting one
 		 * without a wallet would point every forfeit at an address that does not
-		 * exist — and `settle_stake` would refuse, turning each cancellation into
+		 * exist, and `settle_stake` would refuse, turning each cancellation into
 		 * an error nobody could explain from the UI.
 		 */
 		const { data: charity } = await db
@@ -278,7 +338,7 @@ export const actions: Actions = {
 		);
 
 		/**
-		 * The charity stands either way — it is a real record and deleting it
+		 * The charity stands either way, it is a real record and deleting it
 		 * would lose the detail just typed in. Said plainly rather than reporting
 		 * success, because without a wallet it cannot be activated, and the
 		 * operator needs to know that now rather than when a forfeit fails.
@@ -364,7 +424,7 @@ export const actions: Actions = {
 	 * Creates a missing charity wallet.
 	 *
 	 * Idempotent, because `create_wallet` is: if one already exists it is
-	 * returned rather than replaced. That is the behaviour that matters here —
+	 * returned rather than replaced. That is the behaviour that matters here,
 	 * a second wallet would not be a duplicate, it would be an address the
 	 * charity's existing donations no longer point at.
 	 */
@@ -426,7 +486,7 @@ export const actions: Actions = {
 			? fail(
 					502,
 					problem(
-						`${summary} ${settlements_outstanding} settlement(s) could not be paid — check the function logs.`
+						`${summary} ${settlements_outstanding} settlement(s) could not be paid, check the function logs.`
 					)
 				)
 			: ok(summary);

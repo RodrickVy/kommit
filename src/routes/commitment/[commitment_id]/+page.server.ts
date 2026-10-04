@@ -6,7 +6,7 @@ import type { Database } from '#lib/supabase/database.types';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
- * Commitment detail — `/commitment/[commitment_id]`.
+ * Commitment detail, `/commitment/[commitment_id]`.
  *
  * Both parties see the same page; which actions are offered depends on their
  * role and the current status. That is decided on the server from the verified
@@ -20,8 +20,8 @@ import type { Actions, PageServerLoad } from './$types';
  *
  * THE TWO QR CODES ARE SEPARATE THINGS and the page must never blur them:
  *
- *   QR #1 — verify the meetup. Returns both stakes. Buys nothing.
- *   QR #2 — buy the item. Only after QR #1, and only if the buyer wants to.
+ *   QR #1, verify the meetup. Returns both stakes. Buys nothing.
+ *   QR #2, buy the item. Only after QR #1, and only if the buyer wants to.
  */
 
 type EventType = Database['public']['Enums']['commitment_event_type'];
@@ -93,8 +93,24 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const isBuyer = commitment.buyer_id === user.id;
 
 	/**
+	 * A seller deciding whether to accept sees what accepting will take from
+	 * them: their own fee, scaled by their own reputation.
+	 */
+	let sellerFee: { baseFeeCents: number; reputation: number; feeCents: number } | null = null;
+	if (!isBuyer && commitment.status === 'pending') {
+		const { data: fee } = await locals.supabase.rpc('my_commitment_fee').maybeSingle();
+		if (fee) {
+			sellerFee = {
+				baseFeeCents: Number(fee.base_fee_cents),
+				reputation: Number(fee.reputation),
+				feeCents: Number(fee.fee_cents)
+			};
+		}
+	}
+
+	/**
 	 * A pending request past its deadline is dead even though nothing has
-	 * marked it so yet — `process_commitments` does that on its next run.
+	 * marked it so yet, `process_commitments` does that on its next run.
 	 * Computed here so the page tells the truth meanwhile; the accept action
 	 * refuses it independently rather than trusting this value.
 	 */
@@ -107,6 +123,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		settings: settingsResult.data,
 		payment: paymentResult.data,
 		transfers: transfersResult.data ?? [],
+		sellerFee,
 		isBuyer,
 		expired
 	};
@@ -237,7 +254,7 @@ export const actions: Actions = {
 	 *
 	 * This file does not change the status itself. Only the Edge Function can
 	 * move the money, and a commitment must never become active with one side
-	 * unpaid — so the state change belongs where the payment happens.
+	 * unpaid, so the state change belongs where the payment happens.
 	 */
 	accept: async ({ locals, params, url }) => {
 		requireUser(await locals.getVerifiedUser(), url.pathname);
@@ -255,7 +272,7 @@ export const actions: Actions = {
 			return fail(needsFunds ? 402 : 409, problem(result.error.message, needsFunds));
 		}
 
-		return ok('Accepted. Both stakes are now held — you are committed to this meetup.');
+		return ok('Accepted. Both stakes are now held, you are committed to this meetup.');
 	},
 
 	/** The seller says no. Takes nothing from them and refunds the buyer. */
@@ -331,7 +348,7 @@ export const actions: Actions = {
 	 * "I am here."
 	 *
 	 * The coordinates come from the browser's Geolocation API and are filled
-	 * into hidden fields before the form submits — which is why this action
+	 * into hidden fields before the form submits, which is why this action
 	 * needs JavaScript, and says so in the UI. There is no server-side way to
 	 * learn where a phone is.
 	 *
@@ -347,7 +364,7 @@ export const actions: Actions = {
 		const longitude = Number(data.get('longitude'));
 
 		/**
-		 * `Number('')` is 0, and (0, 0) is a real place in the Gulf of Guinea —
+		 * `Number('')` is 0, and (0, 0) is a real place in the Gulf of Guinea,
 		 * so an empty field would otherwise submit as a position rather than as
 		 * a missing one, and be reported as "you are 11,000km away".
 		 */
@@ -378,7 +395,7 @@ export const actions: Actions = {
 
 		return ok(
 			result.data.both_checked_in
-				? 'Checked in. You are both here — the seller can now show the verification code.'
+				? 'Checked in. You are both here, the seller can now show the verification code.'
 				: 'Checked in. Waiting for the other person to arrive.'
 		);
 	},
@@ -387,7 +404,7 @@ export const actions: Actions = {
 	 * The seller shows QR #1, which the buyer scans to verify the meetup.
 	 *
 	 * Issuing a new code revokes the previous one, so this doubles as the
-	 * refresh action — there is no state in which two codes are live.
+	 * refresh action, there is no state in which two codes are live.
 	 */
 	showMeetupQr: async ({ locals, params, url }) => {
 		requireUser(await locals.getVerifiedUser(), url.pathname);

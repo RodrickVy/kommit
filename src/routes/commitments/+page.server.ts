@@ -10,7 +10,7 @@ import { requireUser } from '#lib/server/auth/guards';
 import type { PageServerLoad } from './$types';
 
 /**
- * Commitments — every commitment this user is part of, in either role.
+ * Commitments, every commitment this user is part of, in either role.
  *
  * Sorting and filtering come from the query string, so a chosen view survives
  * a refresh and can be bookmarked. Anything unrecognised falls back to the

@@ -5,7 +5,7 @@ import type { Database } from '#lib/supabase/database.types';
 /**
  * A wallet's activity, read from Solana and labelled from kommitly's records.
  *
- * The chain is the source of truth for WHAT happened — it includes deposits,
+ * The chain is the source of truth for WHAT happened, it includes deposits,
  * which kommitly never sees arrive. The ledger (`wallet_transactions`) and
  * `payments` say WHY: a stake, a refund, a sale. A signature found in neither
  * is described by its effect on this wallet: money in is a deposit, money out
@@ -80,7 +80,7 @@ async function deltaFor(signature: string, address: string): Promise<number | nu
 /**
  * The most recent activity for this wallet, newest first.
  *
- * @returns null when Solana could not be reached — not an empty history.
+ * @returns null when Solana could not be reached, not an empty history.
  */
 export async function loadWalletActivity(
 	supabase: SupabaseClient<Database>,

@@ -1,6 +1,6 @@
 <script lang="ts">
 	/**
-	 * Root layout — the application shell.
+	 * Root layout, the application shell.
 	 *
 	 * Wraps every page. Because it is the root, the header and footer are
 	 * created once and survive navigation: moving between pages swaps only
@@ -37,12 +37,12 @@
 </svelte:head>
 
 <div class="shell">
-	<AppHeader user={data.user} isAdmin={data.isAdmin} />
+	<AppHeader user={data.user} isAdmin={data.isAdmin} displayName={data.displayName} />
 
 	<!--
 		`id="main"` is the destination of the header's skip link, and
 		`tabindex="-1"` lets it receive programmatic focus when that link is
-		followed — without it, some browsers move the scroll position but
+		followed, without it, some browsers move the scroll position but
 		leave focus stranded in the navigation.
 	-->
 	<main id="main" class="main" tabindex="-1">
@@ -63,7 +63,7 @@
 	}
 
 	/* Grid items default to `min-width: auto`, meaning their minimum size is
-	   their min-content size — and a track will grow BEYOND its container to
+	   their min-content size, and a track will grow BEYOND its container to
 	   honour that. One wide descendant is therefore enough to stretch this
 	   column past the viewport and drag every other row out with it.
 
@@ -94,7 +94,7 @@
 
 	/* `tabindex="-1"` makes `<main>` focusable, and browsers then draw a
 	   focus ring around the whole page when the skip link is used. The ring
-	   is suppressed because `<main>` is not an interactive control — the
+	   is suppressed because `<main>` is not an interactive control, the
 	   visible result of following the skip link should be the content
 	   scrolling into view, not a box around everything. */
 	.main:focus {

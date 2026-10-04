@@ -4,43 +4,26 @@ import { transferFunds, type TransferResult } from './transfer.ts';
 import { getCharityWallet, getMarketSettings, getPlatformWallet, getUserWallet } from './wallets.ts';
 
 /**
- * `get_commitment_stake` and `settle_stake` from the function contracts.
- */
-
-export type Party = 'buyer' | 'seller';
-
-/**
- * `get_commitment_stake` — what this participant must stake, in CAD cents.
+ * `get_commitment_stake`, what this participant must stake, in CAD cents.
  *
- * Moves no money. It only answers "how much", so the Listing page can show a
- * buyer the figure before they commit and the seller's request screen can show
- * theirs before they accept.
+ * Moves no money. The amount comes from `commitment_fee_cents` in the
+ * database, the one definition of the fee shared with what the buyer is
+ * shown before they commit:
  *
- * Reputation does not adjust the stake for now: it is a flat $2.00 CAD for
- * every participant, set in `market_settings` (base, floor and ceiling all
- * 200 cents).
+ *     fee = base_fee * market_reputation / their_reputation
  *
- * The signature already takes the profile and the role, so introducing the
- * formula is a change inside this function and nowhere else — and because the
- * exact lamports transferred are recorded on the commitment, stakes agreed
- * under today's flat rate stay valid when the formula arrives.
- *
- * The result is clamped to the configured floor and ceiling. Not decoration:
- * once a formula exists, a mistyped weight could otherwise ask someone for one
- * cent or for ten thousand dollars.
+ * clamped to the configured floor and ceiling. The exact lamports transferred
+ * are recorded on the commitment, so a stake agreed today stays valid however
+ * the weights or reputations move later.
  */
 export async function getCommitmentStake(
 	db: SupabaseClient,
-	_profileId: string,
+	profileId: string,
 	_role: Party
 ): Promise<number | null> {
-	const settings = await getMarketSettings(db);
-	if (!settings) return null;
-
-	return Math.min(
-		Math.max(settings.base_commitment_fee_cents, settings.min_commitment_fee_cents),
-		settings.max_commitment_fee_cents
-	);
+	const { data, error } = await db.rpc('commitment_fee_cents', { target: profileId });
+	if (error || data === null || data === undefined) return null;
+	return Number(data);
 }
 
 /** Converts a CAD stake into the lamports that will actually be transferred. */
@@ -63,7 +46,7 @@ export type SettleResult =
 	| { readonly ok: false; readonly code: string; readonly message: string };
 
 /**
- * `settle_stake` — resolves money already held in the Main Wallet.
+ * `settle_stake`, resolves money already held in the Main Wallet.
  *
  * A refund returns it to the participant; a forfeit sends it to the active
  * charity. Used by declines, cancellations, successful completions and the
@@ -71,7 +54,7 @@ export type SettleResult =
  *
  * IT NEVER RECALCULATES THE FEE. It reads the exact lamports recorded when the
  * stake was locked. The configured rate is editable, so reconverting the CAD
- * amount would return a different quantity of SOL than was taken — quietly
+ * amount would return a different quantity of SOL than was taken, quietly
  * short-changing a user, or paying them out of other people's stakes.
  *
  * Settling the same stake twice is prevented by the idempotency key, which
@@ -104,7 +87,7 @@ export async function settleStake(
 		role === 'buyer' ? commitment.buyer_stake_lamports : commitment.seller_stake_lamports;
 
 	/**
-	 * Null means this participant never staked — a seller who declined, or a
+	 * Null means this participant never staked, a seller who declined, or a
 	 * request whose transfer failed. Nothing is held, so there is nothing to
 	 * settle, and treating it as a zero transfer would write a record claiming
 	 * money moved when none did.
