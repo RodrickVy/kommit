@@ -375,6 +375,31 @@ version outside `^22.17 || >=24` fails the install outright rather than
 warning — that is deliberate, but it is the first thing to check if a build
 suddenly fails on an engine error.
 
+### Auth URLs
+
+Set in `supabase/config.toml` and applied with `supabase config push`:
+
+| Setting | Value |
+| --- | --- |
+| Site URL | `https://kommitly.tech` |
+| Redirect URLs | `kommitly.tech`, `www.kommitly.tech`, `kommit-delta.vercel.app`, `kommit-*.vercel.app`, `localhost:5173` |
+
+Site URL is the domain we own, deliberately — never a Vercel or localhost
+address. It is the fallback used whenever a requested redirect is not
+recognised, so it has to be somewhere a real person on a real device can
+actually reach.
+
+**A missing redirect URL fails silently.** Supabase does not reject an
+unrecognised redirect; it ignores it and uses Site URL instead. The symptom is
+a confirmation link that works perfectly in development and sends every
+production user somewhere else. Any new origin — a second domain, a custom
+preview host — must be added before it will work.
+
+Email links land on `/auth/callback`, which exchanges the one-time code for a
+session. Without that route a link delivers the visitor back to the site still
+signed out, which looks like it worked.
+
+
 ### Environment variables
 
 Set every variable from `.env.example` in the Vercel project's environment
