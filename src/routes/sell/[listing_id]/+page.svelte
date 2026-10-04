@@ -259,6 +259,19 @@
 						{#if form?.requestError}
 							<div class="commit-error">
 								<Alert tone="error">{form.requestError}</Alert>
+								{#if form.needsFunds}
+									<!--
+										Not enough SOL is a problem with an obvious next step,
+										so it is offered rather than left for the buyer to work
+										out. The request itself was not created, so nothing is
+										lost by going to top up and coming back.
+									-->
+									<div class="commit-fund">
+										<Button href="/wallet/fund_wallet" variant="secondary" size="sm">
+											Add funds
+										</Button>
+									</div>
+								{/if}
 							</div>
 						{/if}
 
@@ -495,6 +508,10 @@
 
 	.commit-error {
 		margin-bottom: var(--k-space-3);
+	}
+
+	.commit-fund {
+		margin-top: var(--k-space-3);
 	}
 
 	.commit-fields {

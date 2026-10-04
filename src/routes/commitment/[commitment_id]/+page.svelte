@@ -46,7 +46,24 @@
 </PageHeader>
 
 {#if form?.actionError}
-	<div class="banner"><Alert tone="error">{form.actionError}</Alert></div>
+	<div class="banner">
+		<Alert tone="error">{form.actionError}</Alert>
+		{#if form.needsFunds}
+			<!--
+				The seller could not cover their stake, so acceptance did not
+				happen. Worth saying plainly: the buyer's stake is untouched and
+				the request is still open, so topping up and accepting again
+				costs nothing.
+			-->
+			<div class="fund">
+				<Button href="/wallet/fund_wallet" variant="secondary" size="sm">Add funds</Button>
+				<p class="fund-note">
+					Nothing was taken. The request is still open — add funds and accept
+					again.
+				</p>
+			</div>
+		{/if}
+	</div>
 {:else if form?.message}
 	<div class="banner"><Alert tone="success">{form.message}</Alert></div>
 {/if}
@@ -191,6 +208,16 @@
 <style>
 	.banner {
 		margin-bottom: var(--k-space-4);
+	}
+
+	.fund {
+		margin-top: var(--k-space-3);
+	}
+
+	.fund-note {
+		margin-top: var(--k-space-2);
+		color: var(--k-text-subtle);
+		font-size: var(--k-text-sm);
 	}
 
 	.layout {

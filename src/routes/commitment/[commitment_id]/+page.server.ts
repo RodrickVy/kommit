@@ -1,5 +1,6 @@
 import { error, fail } from '@sveltejs/kit';
 import { requireUser } from '#lib/server/auth/guards';
+import { invokeFunction } from '#lib/server/functions/invoke';
 import type { Database } from '#lib/supabase/database.types';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -98,91 +99,61 @@ async function recordEvent(
 	});
 }
 
-const ok = (message: string) => ({ actionError: null, message });
+const ok = (message: string) => ({ actionError: null, message, needsFunds: false });
 
 export const actions: Actions = {
-	/** The seller agrees. This is the moment the commitment becomes binding. */
+	/**
+	 * The seller agrees. Delegated to `respond_to_commitment`, which takes the
+	 * seller's stake before activating the commitment.
+	 *
+	 * This file no longer changes the status itself. Only the Edge Function can
+	 * move the money, and a commitment must never become active with one side
+	 * unpaid — so the state change belongs where the payment happens.
+	 */
 	accept: async ({ locals, params, url }) => {
-		const { user, commitment, isSeller } = await requireParty(
-			locals,
-			params.commitment_id,
-			url.pathname
+		requireUser(await locals.getVerifiedUser(), url.pathname);
+
+		const result = await invokeFunction<{ stake_lamports: number }>(
+			locals.supabase,
+			'respond_to_commitment',
+			{ commitment_id: params.commitment_id, action: 'accept' }
 		);
 
-		if (!isSeller) return fail(403, { actionError: 'Only the seller can accept.', message: null });
-		if (commitment.status !== 'pending') {
-			return fail(409, { actionError: 'This request is no longer open.', message: null });
-		}
-
-		/**
-		 * Re-checked here rather than trusting the page's view. A page loaded
-		 * before the deadline and submitted after it would otherwise accept a
-		 * dead request — and acceptance is what locks a buyer's stake and starts
-		 * the clock they can be penalised against.
-		 */
-		if (new Date(commitment.request_expires_at) <= new Date()) {
-			return fail(409, {
-				actionError: 'This request has expired. The buyer will need to send a new one.',
-				message: null
+		if (!result.ok) {
+			return fail(result.error.code === 'INSUFFICIENT_FUNDS' ? 402 : 409, {
+				actionError: result.error.message,
+				message: null,
+				needsFunds: result.error.code === 'INSUFFICIENT_FUNDS' || result.error.code === 'WALLET_NOT_FOUND'
 			});
 		}
 
-		const { error: updateError } = await locals.supabase
-			.from('commitments')
-			.update({ status: 'accepted', accepted_at: new Date().toISOString() })
-			.eq('id', commitment.id)
-			.eq('status', 'pending');
-
-		if (updateError) {
-			/**
-			 * A unique violation means the moment was taken between loading this
-			 * page and accepting — by another commitment of this seller's, or by
-			 * the buyer committing elsewhere at the same instant. The database is
-			 * the only place that can settle that race.
-			 */
-			if (updateError.code === '23505') {
-				return fail(409, {
-					actionError: 'That time is no longer free — one of you has another commitment then.',
-					message: null
-				});
-			}
-			return fail(500, { actionError: 'The commitment could not be accepted.', message: null });
-		}
-
-		await recordEvent(locals, commitment.id, 'seller_accepted', user.id, 'seller');
-
-		return ok('Accepted. You are both committed to this meetup.');
+		return ok('Accepted. Both stakes are now held — you are committed to this meetup.');
 	},
 
-	/** The seller says no, before accepting. */
+	/** The seller says no. Takes nothing from them and refunds the buyer. */
 	decline: async ({ locals, params, url }) => {
-		const { user, commitment, isSeller } = await requireParty(
-			locals,
-			params.commitment_id,
-			url.pathname
+		requireUser(await locals.getVerifiedUser(), url.pathname);
+
+		const result = await invokeFunction<{ refunded: boolean }>(
+			locals.supabase,
+			'respond_to_commitment',
+			{ commitment_id: params.commitment_id, action: 'decline' }
 		);
 
-		if (!isSeller) return fail(403, { actionError: 'Only the seller can decline.', message: null });
-		if (commitment.status !== 'pending') {
-			return fail(409, { actionError: 'This request is no longer open.', message: null });
+		if (!result.ok) {
+			return fail(409, { actionError: result.error.message, message: null, needsFunds: false });
 		}
 
-		await locals.supabase
-			.from('commitments')
-			.update({ status: 'declined', declined_at: new Date().toISOString() })
-			.eq('id', commitment.id)
-			.eq('status', 'pending');
-
 		/**
-		 * Recorded as an event, never as a penalty. Declining promptly is the
-		 * GOOD outcome — it frees the seller's calendar and tells the buyer
-		 * straight away. Penalising it would push sellers to ignore requests
-		 * instead, which is precisely the behaviour the ignored counter exists
-		 * to discourage.
+		 * The refund can fail independently of the decline. Saying so is the
+		 * point: claiming the money is back when it is not would be a lie the
+		 * user could only discover by checking their balance.
 		 */
-		await recordEvent(locals, commitment.id, 'seller_declined', user.id, 'seller');
-
-		return ok('Declined.');
+		return ok(
+			result.data.refunded
+				? 'Declined. The buyer has been refunded.'
+				: 'Declined. The buyer refund is still processing and will complete shortly.'
+		);
 	},
 
 	/** The buyer takes back their own request before it is accepted. */
@@ -194,10 +165,10 @@ export const actions: Actions = {
 		);
 
 		if (!isBuyer) {
-			return fail(403, { actionError: 'Only the buyer can withdraw a request.', message: null });
+			return fail(403, { actionError: 'Only the buyer can withdraw a request.', message: null, needsFunds: false });
 		}
 		if (commitment.status !== 'pending') {
-			return fail(409, { actionError: 'This request is no longer open.', message: null });
+			return fail(409, { actionError: 'This request is no longer open.', message: null, needsFunds: false });
 		}
 
 		await locals.supabase
@@ -230,7 +201,8 @@ export const actions: Actions = {
 		if (commitment.status !== 'accepted') {
 			return fail(409, {
 				actionError: 'Only an accepted commitment can be cancelled.',
-				message: null
+				message: null,
+				needsFunds: false
 			});
 		}
 
@@ -247,7 +219,7 @@ export const actions: Actions = {
 			.eq('status', 'accepted');
 
 		if (updateError) {
-			return fail(500, { actionError: 'The commitment could not be cancelled.', message: null });
+			return fail(500, { actionError: 'The commitment could not be cancelled.', message: null, needsFunds: false });
 		}
 
 		await recordEvent(

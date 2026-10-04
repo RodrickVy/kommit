@@ -5,6 +5,7 @@ import { requireUser } from '#lib/server/auth/guards';
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from '#lib/listings/images';
 import { CONDITION_ORDER, type ListingCondition } from '#lib/listings/labels';
 import { generateSlots } from '#lib/commitments/slots';
+import { invokeFunction } from '#lib/server/functions/invoke';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -213,100 +214,51 @@ export const actions: Actions = {
 	 *   * wallet locking. Nothing is reserved until the wallet service exists.
 	 */
 	requestCommitment: async ({ request, locals, params, url }) => {
-		const user = requireUser(await locals.getVerifiedUser(), url.pathname);
+		requireUser(await locals.getVerifiedUser(), url.pathname);
 
 		const form = await request.formData();
 		const meetupLocationId = String(form.get('meetupLocationId') ?? '');
 		const scheduledAt = String(form.get('scheduledAt') ?? '');
 
 		if (!meetupLocationId || !scheduledAt) {
-			return fail(400, { requestError: 'Choose both a place and a time.' });
+			return fail(400, { requestError: 'Choose both a place and a time.', needsFunds: false });
 		}
 
 		/**
-		 * The listing is re-read rather than trusted from the form. `seller_id`
-		 * comes from here, so a crafted submission cannot name someone else as
-		 * the seller, and the status check means a reserved or withdrawn item
-		 * cannot be committed to even if the page was loaded while it was live.
+		 * Delegated entirely to the Edge Function, which is the only thing that
+		 * can take the buyer's stake — the custodial signing key is a function
+		 * secret and is deliberately unreachable from here.
+		 *
+		 * Nothing is written to `commitments` in this file any more. Doing both
+		 * would mean a request could exist without its money having moved, which
+		 * is exactly the state the product exists to prevent.
 		 */
-		const { data: listing } = await locals.supabase
-			.from('listings')
-			.select('id, seller_id, status')
-			.eq('id', params.listing_id)
-			.maybeSingle();
-
-		if (!listing || listing.status !== 'active') {
-			return fail(409, { requestError: 'This listing is no longer available.' });
-		}
-
-		if (listing.seller_id === user.id) {
-			return fail(400, { requestError: 'You cannot request a meetup for your own listing.' });
-		}
-
-		const { data: settings } = await locals.supabase
-			.from('market_settings')
-			.select('base_commitment_fee_cents')
-			.eq('id', 1)
-			.single();
-
-		const baseStake = settings?.base_commitment_fee_cents ?? 0;
-
-		const { data: commitment, error } = await locals.supabase
-			.from('commitments')
-			.insert({
-				listing_id: listing.id,
-				buyer_id: user.id,
-				seller_id: listing.seller_id,
-				meetup_location_id: meetupLocationId,
-				scheduled_at: scheduledAt,
-				/**
-				 * Equal today only because nothing calculates them yet. The two
-				 * columns exist so that reputation-adjusted stakes do not require
-				 * changing the table.
-				 */
-				buyer_stake_cents: baseStake,
-				seller_stake_cents: baseStake
-			})
-			.select('id')
-			.single();
-
-		if (error) {
-			/**
-			 * The database enforces several rules this action cannot usefully
-			 * re-check without a race. Each is translated rather than shown raw,
-			 * because a constraint name means nothing to the person reading it.
-			 */
-			if (error.code === '23505') {
-				return fail(409, {
-					requestError:
-						'That time has just been taken, or you already have a request open on this listing.'
-				});
-			}
-
-			if (error.message.includes('hours away')) {
-				return fail(400, {
-					requestError:
-						'That meetup is too soon. Pick a time far enough ahead for the seller to respond.'
-				});
-			}
-
-			return fail(500, { requestError: 'The request could not be sent. Please try again.' });
-		}
-
-		/**
-		 * The event log is what reputation will eventually be built from — the
-		 * path, not just the final status. Written alongside the commitment
-		 * rather than inferred later, because "who did what, as which role, and
-		 * when" cannot be reconstructed from a status column.
-		 */
-		await locals.supabase.from('commitment_events').insert({
-			commitment_id: commitment.id,
-			event_type: 'request_created',
-			actor_profile_id: user.id,
-			actor_role: 'buyer'
+		const result = await invokeFunction<{
+			commitment_id: string;
+			stake_lamports: number;
+		}>(locals.supabase, 'request_commitment', {
+			listing_id: params.listing_id,
+			meetup_location_id: meetupLocationId,
+			scheduled_at: scheduledAt
 		});
 
-		redirect(303, `/commitment/${commitment.id}`);
+		if (!result.ok) {
+			/**
+			 * Insufficient funds is not a failure the user should puzzle over —
+			 * it has an obvious next step, so the page is told to offer it.
+			 */
+			if (result.error.code === 'INSUFFICIENT_FUNDS') {
+				return fail(402, { requestError: result.error.message, needsFunds: true });
+			}
+
+			if (result.error.code === 'WALLET_NOT_FOUND') {
+				return fail(404, { requestError: result.error.message, needsFunds: true });
+			}
+
+			return fail(400, { requestError: result.error.message, needsFunds: false });
+		}
+
+		redirect(303, `/commitment/${result.data.commitment_id}`);
 	},
 
 	/** Edit the item's details. */
