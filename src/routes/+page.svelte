@@ -11,15 +11,12 @@
 	import Alert from '#lib/components/ui/Alert.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
-	import WalletBalance from '#lib/components/wallet/WalletBalance.svelte';
 	import type { PageProps } from './$types';
 
 	/**
 	 * Home — `/`.
 	 *
-	 * What kommitly is, the newest listings as a sliding row, and — once signed
-	 * in — the wallet balance, since funds decide whether a meetup can be
-	 * requested at all.
+	 * What kommitly is, how it works, and the newest listings as a sliding row.
 	 */
 	let { data }: PageProps = $props();
 
@@ -81,46 +78,33 @@
 	/>
 </svelte:head>
 
-<div class="intro">
 <section class="hero" aria-labelledby="hero-title">
 	<h1 id="hero-title">Local deals, backed by a promise to show up.</h1>
 
-	<!-- The whole idea in four steps: Find → Commit → Meet → Complete. -->
-	<ol class="flow" role="list">
-		{#each STEPS as step, index (step.title)}
-			<li class="step">
-				<span class="step-icon k-cut"><Icon icon={step.icon} /></span>
-				<span class="step-number">Step {index + 1}</span>
-				<h2 class="step-title">{step.title}</h2>
-				<p class="step-text">{step.text}</p>
-			</li>
-		{/each}
-	</ol>
-
 	<div class="hero-actions">
+		<Button href="/discover">Browse listings</Button>
 		{#if signedIn}
-			<Button href="/discover">Discover listings</Button>
+			<Button href="/sell/create_listing" variant="secondary">Sell something</Button>
 		{:else}
-			<Button href="/join">Create an account</Button>
-			<span class="hero-note">Free to join. You only put down $2 when you request a meetup.</span>
+			<Button href="/join" variant="secondary">Create an account</Button>
 		{/if}
 	</div>
 </section>
 
-{#if data.wallet}
-	<section class="wallet">
-		<WalletBalance wallet={data.wallet} />
-		<div class="wallet-actions">
-			<Button href="/wallet/fund_wallet" size="sm">Add funds</Button>
-			<Button href="/wallet" variant="secondary" size="sm">Wallet</Button>
-		</div>
-	</section>
-{:else if data.walletError}
-	<div class="wallet">
-		<Alert tone="error">{data.walletError}</Alert>
-	</div>
-{/if}
-</div>
+<!-- The whole idea in four steps: Find → Commit → Meet → Complete. Each step
+     is identified by its icon rather than a number. -->
+<section class="how" aria-labelledby="how-title">
+	<h2 id="how-title" class="section-title">How it works</h2>
+	<ol class="flow" role="list">
+		{#each STEPS as step (step.title)}
+			<li class="step">
+				<span class="step-icon k-cut"><Icon icon={step.icon} /></span>
+				<h3 class="step-title">{step.title}</h3>
+				<p class="step-text">{step.text}</p>
+			</li>
+		{/each}
+	</ol>
+</section>
 
 <section class="preview" aria-labelledby="preview-title">
 	<div class="preview-head">
@@ -184,19 +168,22 @@
 
 
 <style>
-	/* The intro needs the full width for its four steps; the wallet follows it. */
-	.intro {
-		display: grid;
-		gap: var(--k-space-5);
-		align-items: start;
-		margin-bottom: var(--k-space-6);
-	}
 
 
 	.hero {
 		display: grid;
 		gap: var(--k-space-5);
-		padding-block: var(--k-space-4) 0;
+		padding-block: var(--k-space-4) var(--k-space-6);
+	}
+
+	.how {
+		display: grid;
+		gap: var(--k-space-4);
+		margin-bottom: var(--k-space-7);
+	}
+
+	.section-title {
+		font-size: var(--k-text-xl);
 	}
 
 	.hero h1 {
@@ -237,13 +224,6 @@
 		font-size: 1.25rem;
 	}
 
-	.step-number {
-		color: var(--k-primary);
-		font-size: var(--k-text-xs);
-		font-weight: 700;
-		letter-spacing: var(--k-tracking-wide);
-		text-transform: uppercase;
-	}
 
 	.step-title {
 		font-size: var(--k-text-base);
@@ -265,7 +245,7 @@
 		}
 
 		.step-icon {
-			grid-row: span 3;
+			grid-row: span 2;
 			width: 2.25rem;
 			height: 2.25rem;
 			margin-bottom: 0;
@@ -280,21 +260,8 @@
 		gap: var(--k-space-3);
 	}
 
-	.hero-note {
-		color: var(--k-text-subtle);
-		font-size: var(--k-text-sm);
-	}
 
-	.wallet {
-		display: grid;
-		gap: var(--k-space-3);
-		max-width: 28rem;
-	}
 
-	.wallet-actions {
-		display: flex;
-		gap: var(--k-space-2);
-	}
 
 	.preview {
 		margin-bottom: var(--k-space-7);
