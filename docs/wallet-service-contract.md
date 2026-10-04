@@ -1,6 +1,59 @@
 # Kommitly Wallet Service — Implementation Contract
 
-Status: **specification.** Nothing here is built.
+Status: **built, and this document is now partly historical.** It was written
+as a handoff spec before the wallet existed. The wallet exists, as Supabase
+Edge Functions under `supabase/functions/`, and three of the decisions below
+were deliberately reversed during the build. The reasoning for each is in the
+code; this section exists so nobody reads a superseded requirement as current.
+
+## Where the implementation deliberately differs
+
+**1. Encrypted private keys ARE stored in the database.**
+
+Section 9 forbids writing a keypair to any database column. The build does
+exactly that, in `wallets.secret_key_encrypted` and
+`platform_wallet.secret_key_encrypted`, as AES-256-GCM ciphertext.
+
+It is a trade-off taken knowingly for a devnet build, and it is narrower than
+it sounds:
+
+- the encryption key is NOT in the database. It is `WALLET_ENCRYPTION_KEY` in
+  the Edge Function secret store, so a database dump decrypts nothing.
+- no role the browser can reach is granted SELECT on the column at all —
+  enforced by column-level grants, not merely by a policy.
+- exactly one module decrypts anything (`_shared/crypto.ts`) and exactly one
+  signs anything (`_shared/solana.ts`).
+
+Before real money this must move to a KMS or Supabase Vault, where the
+application never sees raw key material. The original requirement stands as
+the destination; it is not what is deployed today.
+
+**2. Balances are not stored, and the ledger is in lamports, not fiat.**
+
+The sections below describe fiat balance columns on `wallets` kept in step
+with a ledger. There are none. Every balance is read live from Solana, because
+a stored copy is a second source of truth that drifts the moment any transfer
+happens outside the app. `wallet_transactions` records why each movement
+happened and the exact lamports that moved — it is not a balance ledger.
+
+Commitment stakes are quoted in CAD and the exact lamports transferred are
+recorded on the commitment, so a refund returns what was taken rather than
+reconverting at a rate that has since changed.
+
+**3. A purchase converts at a live quote.**
+
+`market_settings.sol_price_cents` is an admin-entered figure, fine for showing
+"about $42" beside a balance and wrong for deciding an amount to move. A
+purchase therefore fetches a live SOL price and falls back to the configured
+value only when that is unreachable, recording which it used on the payment
+row. See `supabase/functions/_shared/price.ts`, which is also honest about not
+being a settlement-grade feed.
+
+Everything else below — the idempotency rules, the forbidden list apart from
+item 1, the rounding direction, the refusal to credit forfeits to any
+Kommitly-owned account — holds and is implemented.
+
+---
 
 This document defines the complete contract for the Cloud Function that owns
 wallet creation and every movement of money in Kommitly. It is written to be
@@ -495,7 +548,12 @@ both read a balance of 100, both lock 100, and the wallet ends at -100.
 
 A build doing any of the following is wrong, regardless of behaviour:
 
-1. Writing a private key, seed phrase or keypair to any database column.
+1. ~~Writing a private key, seed phrase or keypair to any database column.~~
+   **Reversed during the build.** Encrypted keypairs are stored in
+   `wallets.secret_key_encrypted`, with the encryption key held only in the
+   Edge Function secret store. See "Where the implementation deliberately
+   differs" at the top of this document. Writing an UNENCRYPTED key remains
+   forbidden without qualification.
 2. Logging a private key, a service role key, or a full request body
    containing either.
 3. Returning any user's `solana_address` to a different user.

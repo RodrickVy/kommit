@@ -69,8 +69,20 @@ OTP, so no password exists anywhere in the system to store.
 | `email_receipts_enabled` | `boolean` | no | Default false. When on, the user is emailed a receipt. Opt-in, not opt-out. |
 | `last_vote` | `timestamptz` | yes | Most recent charity vote. |
 | `last_vote_choice` | `uuid` | yes | FK to `charities(id)`. |
+| `is_admin` | `boolean` | no | Default false. Grants `/admin`. **Readable by no role the browser can reach, and absent from the UPDATE grant** — so a user cannot read it from their own session and cannot set it on themselves, even though they own the row. |
 | `created_at` | `timestamptz` | no | |
 | `updated_at` | `timestamptz` | no | |
+
+### Why this table has a column grant list, not a blanket SELECT
+
+`profiles` is world-readable by policy, and originally granted table-wide
+SELECT. Adding `is_admin` to a table with a blanket grant would have published
+it, so the grant was replaced with an explicit column list.
+
+The second effect is the more useful one: **every column added from here on is
+unreadable until someone adds it to that list.** The failure mode becomes "a
+field is missing from the UI", which is noticed in minutes, rather than "a
+field leaked", which is not noticed at all.
 
 ### The naming rule
 
@@ -125,11 +137,27 @@ shape as the reputation algorithm evolves.
 | Field | Type | Null | Notes |
 | --- | --- | --- | --- |
 | `id` | `uuid` | no | PK. |
-| `name` | `text` | no | |
+| `name` | `text` | no | The legal name, e.g. "Médecins Sans Frontières". |
+| `short_name` | `text` | yes | What people actually say, e.g. "Doctors Without Borders". Shown in preference to `name` wherever one line is available. |
 | `description` | `text` | yes | |
+| `website_url` | `text` | yes | Checked to start `https://`. A donation destination shown over plain http is not verifiable by the person whose stake was forfeited. |
 | `logo_path` | `text` | yes | Path in Supabase Storage. |
 | `is_active` | `boolean` | no | Default true. Inactive charities stay for historical votes. |
 | `created_at` | `timestamptz` | no | |
+| `updated_at` | `timestamptz` | no | |
+
+**Three charities are seeded at fixed ids**: UNICEF, WWF and Médecins Sans
+Frontières, each with a wallet, with UNICEF selected as the active one.
+
+The ids are literal constants in the migration rather than generated, because
+they are referenced by `market_settings.active_charity_id`, by every
+`wallet_transactions` row recording a forfeit, and by every vote. An id that
+differed between local, preview and production would make those records
+unreadable across environments — and a wallet is created per charity id, so a
+changed id means a wallet holding donations that nothing points at.
+
+**A charity's wallet address must never change once it exists**, for the same
+reason. `/admin` can edit a charity's details and cannot touch its wallet.
 
 **A charity holds a wallet, exactly like a user does.** There is no separate
 payout mechanism and no address column here: forfeited stakes move into the
@@ -542,7 +570,6 @@ seller behaviour be distinguishable.
 
 Taken from §31, which offers them as an example rather than a mandate. Worth
 confirming the list is right before it is built.
-
 ## 12. `check_ins`
 
 §14 specifies exactly what a check-in must record. A row here is the evidence;
@@ -561,42 +588,125 @@ querying.
 | `is_verified` | `boolean` | no | Whether `distance_metres` was within the permitted radius. |
 | `created_at` | `timestamptz` | no | The check-in time. |
 
-**Radius: "block radius".** Pending an exact figure in metres — see open
-question 3. It belongs in `market_settings`, not hardcoded, so it can be tuned
-without a deployment.
+**Radius: `market_settings.check_in_radius_metres`, currently 200m.** In the
+configuration table rather than hardcoded, so it can be tuned without a
+deployment — which is also why `distance_metres` is stored rather than derived.
 
-## 13. `meetup_verifications` — QR #1
+### Failed attempts are kept
+
+A partial unique index allows one **verified** row per role per commitment, and
+no more. Unverified rows are unconstrained and deliberately retained: someone
+who tried four times from 400m away is in a materially different position, in a
+later dispute, from someone who never tried at all, and discarding that would
+make the dispute unanswerable.
+
+### The window
+
+The first participant to check in starts the clock. From that moment the other
+has `market_settings.check_in_window_minutes` to arrive, recorded on the
+commitment as `check_in_window_ends_at`; missing it is what makes them a
+no-show rather than leaving the commitment unresolvable.
+
+The deadline is `GREATEST(now, scheduled_at) + window`, not `now + window`.
+Checking in an hour early would otherwise set a deadline at the agreed time
+itself, so the other party would already be late on arriving punctually.
+**Arriving early must never shorten anybody else's clock.**
+
+## 13. `qr_tokens`
+
+Not in the original model list. It replaces the token columns that §13
+originally put inside `meetup_verifications`, and serves both QR codes.
+
+One table because a token's lifecycle — issued, expires, consumed once,
+replaced — is identical whatever it authorises. Two implementations of "usable
+exactly once" would eventually disagree, and the one that was wrong would cost
+somebody money.
+
+| Field | Type | Null | Notes |
+| --- | --- | --- | --- |
+| `id` | `uuid` | no | PK. |
+| `commitment_id` | `uuid` | no | FK to `commitments(id)`. |
+| `purpose` | `qr_purpose` | no | `meetup_verification` · `purchase`. |
+| `token_hash` | `text` | no | Unique. **Hex SHA-256 of the token. The token itself is never stored.** |
+| `issued_by` | `uuid` | no | FK to `profiles(id)`. The seller, in both current flows. |
+| `issued_at` | `timestamptz` | no | |
+| `expires_at` | `timestamptz` | no | `issued_at` + `market_settings.qr_token_expiry_minutes`. |
+| `revoked_at` | `timestamptz` | yes | Set when a newer token replaces this one. |
+| `consumed_at` | `timestamptz` | yes | |
+| `consumed_by` | `uuid` | yes | FK to `profiles(id)`. Set with `consumed_at` or not at all. |
+
+### The token is hashed, like a password
+
+A token is a bearer credential: whoever holds it can present it. Only its
+SHA-256 reaches the database, so **a database dump cannot be used to complete
+anybody's meetup or trigger anybody's payment.**
+
+### What a token proves, and what it does not
+
+Presenting a valid token proves someone scanned the seller's screen. It proves
+nothing about who they are.
+
+Every function that consumes a token independently verifies that the
+authenticated caller is the commitment's **buyer**. A screenshotted QR
+forwarded to a stranger therefore authorises nothing — they would need the
+buyer's own session as well.
+
+This is also why the QR encodes a generated token rather than just the
+commitment id. An id would be a static value: photograph it once and it could
+be replayed forever, from anywhere.
+
+### Replacement is enforced, not intended
+
+A partial unique index allows **at most one live token** per commitment and
+purpose, where live means neither consumed nor revoked. Issuing a replacement
+must revoke the previous token or the insert is refused.
+
+That constraint is what makes "refreshing the QR kills the old one" a database
+fact. There is no ordering of the two statements in which both codes are
+briefly valid, so a code photographed a minute ago stops working the instant
+the seller refreshes the display.
+
+### Consumption is a compare-and-set
+
+`UPDATE ... WHERE id = $1 AND consumed_at IS NULL`, and the caller checks
+whether it matched a row. Two simultaneous scans both validate successfully —
+validating is a read — and both reach the update; exactly one matches. Checking
+first and updating after would leave a gap both could pass through, and in
+`complete_commitment` that gap is a second pair of stake refunds.
+
+## 14. `meetup_verifications` — QR #1
 
 Proves the two people met. Does **not** buy anything.
 
 | Field | Type | Null | Notes |
 | --- | --- | --- | --- |
 | `id` | `uuid` | no | PK. |
-| `commitment_id` | `uuid` | no | FK, unique — one verification per commitment. |
-| `token` | `text` | no | The value encoded in the QR. |
-| `displayed_by_profile_id` | `uuid` | no | Who shows the code. |
-| `scanned_by_profile_id` | `uuid` | yes | Who scanned it. Null until scanned. |
-| `issued_at` | `timestamptz` | no | |
-| `expires_at` | `timestamptz` | no | |
-| `scanned_at` | `timestamptz` | yes | |
-| `is_consumed` | `boolean` | no | Default false. Set true on the first successful scan. |
+| `commitment_id` | `uuid` | no | FK, **unique** — one verification per commitment, ever. |
+| `qr_token_id` | `uuid` | no | FK to `qr_tokens(id)`, `on delete restrict`. |
+| `displayed_by_profile_id` | `uuid` | no | Who showed the code. The seller. |
+| `scanned_by_profile_id` | `uuid` | no | Who scanned it. The buyer. |
+| `verified_at` | `timestamptz` | no | |
 
-### Single use
+`commitments.meetup_verified_at` is the denormalised copy.
 
-**The code works exactly once.** On the first successful scan it is consumed,
-the meetup is verified, and the code is dead — a second scan of the same code
-fails, whoever presents it.
+The unique constraint on `commitment_id` duplicates the token's single use, and
+that redundancy is wanted here specifically: the consequence of a duplicate
+would be a second pair of refunds paid out of the treasury.
 
-This is also what makes the token meaningful rather than decorative. A QR
-encoding only the commitment id would be a static value: screenshot it, send it
-to someone a hundred miles away, and they could "verify" a meetup that never
-happened. A generated single-use token cannot be replayed, because the first
-use destroys it.
+`on delete restrict` on the token, not cascade — deleting the token that proved
+a meetup would erase the evidence while leaving the conclusion.
 
-The code is dead once the commitment completes regardless, so an unscanned code
-on a finished commitment is never valid.
+### The buyer scans, the seller displays
 
-## 14. `payments` — QR #2
+Not interchangeable. The seller issues the code and the buyer completes it, so
+**a seller cannot verify a meetup alone.**
+
+A code is only issued once **both** check-ins exist. That requirement is the
+only thing tying the code to a physical place: without it a seller could
+generate one at home, send a screenshot, and have a buyer who never left the
+house "verify" a meetup — releasing both stakes for nothing.
+
+## 15. `payments` — QR #2
 
 Kept under the original name from the model list. This is the item purchase,
 entirely separate from commitment stakes.
@@ -605,11 +715,17 @@ entirely separate from commitment stakes.
 | --- | --- | --- | --- |
 | `id` | `uuid` | no | PK. |
 | `commitment_id` | `uuid` | no | FK to `commitments(id)`. |
+| `listing_id` | `uuid` | no | FK to `listings(id)`, `on delete restrict`. |
 | `buyer_id` | `uuid` | no | FK to `profiles(id)`. |
 | `seller_id` | `uuid` | no | FK to `profiles(id)`. |
-| `amount_cents` | `bigint` | no | |
+| `amount_cents` | `bigint` | no | What the buyer was quoted — the listing's own price. |
+| `amount_lamports` | `bigint` | no | What actually moved. |
+| `sol_price_cents` | `bigint` | no | The rate used. |
+| `rate_source` | `text` | no | `coingecko` or `configured`. |
 | `status` | `payment_status` | no | `pending` · `completed` · `failed`. |
-| `solana_transaction_signature` | `text` | yes | |
+| `solana_signature` | `text` | yes | |
+| `failure_reason` | `text` | yes | |
+| `qr_token_id` | `uuid` | yes | FK to `qr_tokens(id)`. |
 | `created_at` | `timestamptz` | no | |
 | `completed_at` | `timestamptz` | yes | |
 
@@ -617,9 +733,47 @@ A payment row may only be created for a commitment whose `meetup_verified_at`
 is set. §25 and §27 are explicit that purchase follows verification, never
 precedes it.
 
----
+### Why the rate and its source are recorded
 
-## 15. `wallets`
+A stake never needs this: it refunds the exact lamports it took. A purchase
+cannot avoid it — the seller priced the item in dollars, so something has to
+convert at the moment the buyer confirms.
+
+The conversion uses a live SOL quote, falling back to
+`market_settings.sol_price_cents` when that is unreachable. Both the rate and
+which of the two it was are stored, because a price that looks wrong a month
+later is otherwise unanswerable.
+
+### One live payment per commitment
+
+A partial unique index covers `pending` and `completed` rows. A second
+simultaneous tap loses that insert and never reaches the chain.
+
+`failed` deliberately does not block: that attempt moved nothing, and the buyer
+should be able to add funds and try again. The purchase token also survives a
+failed payment, for the same reason — forcing the seller to reissue a code for
+a payment that never happened would be punishing the wrong person. Double
+charging is prevented by the transfer's idempotency key, not by burning the
+code.
+
+### Buyer wallet to seller wallet, directly
+
+The Main Wallet is not involved. Stakes go through the treasury because they
+are held and returned; a purchase is not held, so routing it through the
+platform would mean the platform briefly owning the buyer's money for no
+reason.
+
+### The listing is back on sale between verification and payment
+
+Worth stating because it is a real gap, not an oversight. Completing a meetup
+releases the listing from `reserved` back to `active`, so the seller can
+receive new requests while the buyer is still inspecting the item.
+
+`pay_commitment` therefore treats both `active` and `reserved` as purchasable.
+Refusing a `reserved` listing would penalise the buyer who actually turned up
+for a race they could not see.
+
+## 16. `wallets`
 
 One per user **and one per charity**. Created by the wallet Cloud Function,
 never by the app.
@@ -667,7 +821,7 @@ failure mode that is genuinely painful to recover from.
 one marketplace user to another, so it must never be returned by any query that
 serves another user's page.
 
-## 16. `wallet_transactions`
+## 17. `wallet_transactions`
 
 The ledger. Append-only in practice: a row's `status` may move from `pending`
 to `completed` or `failed`, and nothing else about it changes.
@@ -708,7 +862,7 @@ Three groupings behave differently and it is worth being explicit:
 
 ---
 
-## 17. `market_settings`
+## 18. `market_settings`
 
 **The general market configuration table.** A single row holding every value
 that governs how the marketplace behaves, so those values can be changed while
@@ -726,7 +880,8 @@ Admin access only — see the access note at the end of this section.
 | `check_in_radius_metres` | `integer` | no | **200.** |
 | `request_expiry_hours` | `integer` | no | **24.** Maximum acceptance window. |
 | `minimum_acceptance_lead_hours` | `integer` | no | **5.** Minimum gap between acceptance and the meetup. Also the floor on how soon a meetup can be requested. |
-| `check_in_window_minutes` | `integer` | no | **60.** |
+| `check_in_window_minutes` | `integer` | no | **60.** Governs two deadlines: how long the second participant has to arrive after the first checks in, and how long they then have to complete QR #1 before the commitment goes stale. One value because they describe the same thing — how long a meetup may hang unresolved — and a second knob would eventually be set to a contradicting number. |
+| `qr_token_expiry_minutes` | `integer` | no | **10.** Lifetime of a QR token. Short deliberately: the code is shown on one phone and scanned by another standing next to it, so a short life is what makes a photographed code worthless. The seller can always refresh, which revokes the previous one. |
 | `vote_timezone` | `text` | no | `America/Vancouver`. Decides which calendar month a charity vote belongs to. |
 | `active_charity_id` | `uuid` | yes | FK to `charities(id)`. Where forfeited stakes currently go. |
 | `market_reputation` | `numeric` | yes | Written only by the reputation Cloud Function. Null until first calculated. |
@@ -773,7 +928,7 @@ operational values it needs — radius, expiry windows, base fee — and nothing
 else. The parameter columns should not be readable by ordinary users: exposing
 the exact weights behind reputation invites gaming them.
 
-## 18. `market_settings_history`
+## 19. `market_settings_history`
 
 Append-only. One row per change to `market_settings`.
 
@@ -800,7 +955,7 @@ and no reconstruction.
 Written by a database trigger on `market_settings`, not by application code, so
 no path can update settings without recording the change.
 
-## 19. `notifications`
+## 20. `notifications`
 
 §34 requires the platform to communicate state changes so that users never need
 to exchange contact details. That implies stored, per-user messages.
