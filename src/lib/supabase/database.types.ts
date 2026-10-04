@@ -355,6 +355,7 @@ export type Database = {
           min_commitment_fee_cents: number
           minimum_acceptance_lead_hours: number
           request_expiry_hours: number
+          sol_price_cents: number
           updated_at: string
           updated_by: string | null
           user_reputation_params: Json
@@ -374,6 +375,7 @@ export type Database = {
           min_commitment_fee_cents: number
           minimum_acceptance_lead_hours: number
           request_expiry_hours: number
+          sol_price_cents?: number
           updated_at?: string
           updated_by?: string | null
           user_reputation_params?: Json
@@ -393,6 +395,7 @@ export type Database = {
           min_commitment_fee_cents?: number
           minimum_acceptance_lead_hours?: number
           request_expiry_hours?: number
+          sol_price_cents?: number
           updated_at?: string
           updated_by?: string | null
           user_reputation_params?: Json

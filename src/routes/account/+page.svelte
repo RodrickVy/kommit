@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { enhance } from '$app/forms';
 	import Alert from '#lib/components/ui/Alert.svelte';
-	import Button from '#lib/components/ui/Button.svelte';
 	import Field from '#lib/components/ui/Field.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import Button from '#lib/components/ui/Button.svelte';
+	import WalletBalance from '#lib/components/wallet/WalletBalance.svelte';
 	import { formatTimeOfDay } from '#lib/format';
 	import { DAY_LABELS } from '#lib/listings/labels';
 	import type { PageProps } from './$types';
@@ -34,6 +35,23 @@
 	<Alert tone="error">{data.loadError}</Alert>
 {:else}
 	<div class="panels">
+		{#if data.wallet}
+			<WalletBalance wallet={data.wallet} showAddress />
+		{:else if data.walletError}
+			<Panel>
+				<h2 class="panel-title">Wallet</h2>
+				<p class="muted">{data.walletError}</p>
+			</Panel>
+		{:else}
+			<Panel>
+				<h2 class="panel-title">Wallet</h2>
+				<p class="muted">You do not have a wallet yet.</p>
+				<div class="wallet-action">
+					<Button href="/wallet" variant="secondary" size="sm">Set one up</Button>
+				</div>
+			</Panel>
+		{/if}
+
 		<Panel>
 			<h2 class="panel-title">You</h2>
 			<dl class="pairs">
@@ -300,6 +318,10 @@
 
 	.panel-title {
 		font-size: var(--k-text-lg);
+	}
+
+	.wallet-action {
+		margin-top: var(--k-space-4);
 	}
 
 	.pairs {

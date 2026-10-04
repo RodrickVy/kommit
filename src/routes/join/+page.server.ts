@@ -1,6 +1,7 @@
 import { dev } from '$app/env';
 import { fail, redirect } from '@sveltejs/kit';
 import { safeRedirectTarget } from '#lib/server/auth/guards';
+import { invokeFunction, type CreatedWallet } from '#lib/server/functions/invoke';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -204,6 +205,29 @@ export const actions: Actions = {
 		}
 
 		/**
+		 * Give the new account its custodial wallet.
+		 *
+		 * Only possible when sign-up returned a session: the function identifies
+		 * the owner from the caller's JWT, and with email confirmation enabled
+		 * there is no session yet. In that case the wallet is created on first
+		 * sign-in instead — see the root layout.
+		 *
+		 * A failure here is logged and swallowed. The account exists and is
+		 * usable; refusing to sign someone in because a wallet could not be
+		 * created would be worse than letting them in and creating it on their
+		 * next visit, which is exactly what happens.
+		 */
+		if (data.session && data.user) {
+			const created = await invokeFunction<CreatedWallet>(locals.supabase, 'create_wallet/create_user_wallet', {
+				profile_id: data.user.id
+			});
+
+			if (!created.ok) {
+				console.error('[join] wallet creation failed', created.error);
+			}
+		}
+
+		/**
 		 * Two outcomes, decided by the project's email-confirmation setting:
 		 *
 		 *   - confirmation OFF: a session is returned and the user is signed in
@@ -222,6 +246,13 @@ export const actions: Actions = {
 			};
 		}
 
-		redirect(303, safeRedirectTarget(url.searchParams.get('redirectTo')));
+		/**
+		 * Straight to funding rather than the home page. A wallet with nothing
+		 * in it cannot do anything, and the one thing a new user must be told
+		 * is how to put SOL into it. An explicit `redirectTo` still wins, so a
+		 * guard that sent them here returns them where they were going.
+		 */
+		const requested = url.searchParams.get('redirectTo');
+		redirect(303, requested ? safeRedirectTarget(requested) : '/wallet/fund_wallet');
 	}
 };

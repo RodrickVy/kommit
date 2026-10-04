@@ -2,6 +2,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
+	import WalletBalance from '#lib/components/wallet/WalletBalance.svelte';
 	import type { PageProps } from './$types';
 
 	/**
@@ -42,6 +43,28 @@
 		<dd class:mono>{value}</dd>
 	</div>
 {/snippet}
+
+{#if data.wallet}
+	<!--
+		The first thing a signed-in user should see. Their balance decides what
+		they can actually do — a commitment cannot be requested without funds —
+		so it goes above the diagnostics rather than beside them.
+	-->
+	<div class="wallet">
+		<WalletBalance wallet={data.wallet} />
+		<div class="wallet-actions">
+			<Button href="/wallet/fund_wallet">Add funds</Button>
+			<Button href="/wallet" variant="secondary">Wallet</Button>
+		</div>
+	</div>
+{:else if data.walletError}
+	<div class="wallet">
+		<Panel>
+			<h2 class="panel-title">Wallet</h2>
+			<p class="detail">{data.walletError}</p>
+		</Panel>
+	</div>
+{/if}
 
 <div class="panels">
 	<Panel>
@@ -94,6 +117,18 @@
 </div>
 
 <style>
+	.wallet {
+		display: grid;
+		gap: var(--k-space-4);
+		margin-bottom: var(--k-space-5);
+	}
+
+	.wallet-actions {
+		display: flex;
+		flex-wrap: wrap;
+		gap: var(--k-space-2);
+	}
+
 	.panels {
 		display: grid;
 		/* `auto-fit` plus `minmax` gives two columns where there is room and

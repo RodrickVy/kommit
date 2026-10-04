@@ -1,6 +1,6 @@
 import { callerId, serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
-import { LAMPORTS_PER_SOL, getBalanceLamports } from '../_shared/solana.ts';
+import { LAMPORTS_PER_SOL, getWalletBalance } from '../_shared/solana.ts';
 
 /**
  * query_wallet — the live state of a wallet.
@@ -69,7 +69,7 @@ Deno.serve(async (request: Request) => {
 
 	let lamports: number;
 	try {
-		lamports = await getBalanceLamports(wallet.solana_address);
+		lamports = await getWalletBalance(wallet.solana_address);
 	} catch (cause) {
 		/**
 		 * The RPC endpoint being unreachable is a temporary condition, and the
@@ -82,11 +82,36 @@ Deno.serve(async (request: Request) => {
 		return fail('CHAIN_UNAVAILABLE', 'Solana could not be reached. Try again shortly.', 503);
 	}
 
+	/**
+	 * The display conversion. A configured number, not a live quote — see the
+	 * column comment on market_settings.sol_price_cents.
+	 *
+	 * Fetched after the balance so that a missing settings row degrades to "no
+	 * dollar figure" rather than failing a request for the balance itself,
+	 * which is the part the user actually needs.
+	 */
+	const { data: settings } = await db
+		.from('market_settings')
+		.select('sol_price_cents, currency_code')
+		.eq('id', 1)
+		.maybeSingle<{ sol_price_cents: number; currency_code: string }>();
+
+	const sol = lamports / LAMPORTS_PER_SOL;
+	const solPriceCents = settings?.sol_price_cents ?? null;
+
 	return json({
 		wallet_id: wallet.id,
 		solana_address: wallet.solana_address,
 		lamports,
-		sol: lamports / LAMPORTS_PER_SOL,
+		sol,
+		network: Deno.env.get('SOLANA_NETWORK') ?? 'devnet',
+		sol_price_cents: solPriceCents,
+		currency_code: settings?.currency_code ?? null,
+		/**
+		 * Rounded to whole cents, and only when a rate is configured. Null is
+		 * honest about "we cannot say"; zero would read as "worth nothing".
+		 */
+		value_cents: solPriceCents === null ? null : Math.round(sol * solPriceCents),
 		/** Lets the UI choose between "add funds" and showing a balance. */
 		funded: lamports > 0
 	});

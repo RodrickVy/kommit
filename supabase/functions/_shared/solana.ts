@@ -77,7 +77,19 @@ export function parseAddress(address: string): PublicKey {
 	}
 }
 
-export async function getBalanceLamports(address: string): Promise<number> {
+/**
+ * `get_wallet_balance` from the function contracts.
+ *
+ * The authoritative balance, read from Solana. Deliberately does NOT decide
+ * whether that balance is enough for anything — callers do that, because
+ * "enough" differs between a withdrawal, a stake and a purchase.
+ *
+ * A thrown error means the chain could not be reached. It must never be
+ * collapsed into a balance of zero: "Solana is unavailable" and "this user has
+ * no money" lead to opposite decisions, and conflating them would tell someone
+ * their funds had vanished.
+ */
+export async function getWalletBalance(address: string): Promise<number> {
 	return await connection().getBalance(parseAddress(address));
 }
 
@@ -103,7 +115,7 @@ export async function checkCanSend(
 ): Promise<TransferFailure | null> {
 	const sol = (value: number) => (value / LAMPORTS_PER_SOL).toFixed(4);
 
-	const balance = await getBalanceLamports(fromAddress);
+	const balance = await getWalletBalance(fromAddress);
 	const remaining = balance - lamports - TX_FEE_LAMPORTS;
 
 	if (remaining < 0) {
@@ -129,7 +141,7 @@ export async function checkCanSend(
 	}
 
 	/** A brand-new account cannot be created holding less than the minimum. */
-	if (lamports < RENT_MINIMUM_LAMPORTS && (await getBalanceLamports(toAddress)) === 0) {
+	if (lamports < RENT_MINIMUM_LAMPORTS && (await getWalletBalance(toAddress)) === 0) {
 		return {
 			code: 'RENT_MINIMUM',
 			message:

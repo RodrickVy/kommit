@@ -3,6 +3,7 @@ import {
 	PUBLIC_SUPABASE_ANON_KEY,
 	PUBLIC_SUPABASE_URL
 } from '$app/env/public';
+import { loadWallet } from '#lib/server/functions/invoke';
 import type { PageServerLoad } from './$types';
 
 /**
@@ -94,8 +95,20 @@ function describeProbeFailure(cause: unknown): string {
 	return 'The project could not be reached. Check PUBLIC_SUPABASE_URL.';
 }
 
-export const load: PageServerLoad = async () => {
+export const load: PageServerLoad = async ({ locals }) => {
+	/**
+	 * The wallet, but only for someone signed in. A signed-out visitor has no
+	 * wallet to read, and calling the function anyway would cost a round trip
+	 * to Solana to be told so.
+	 */
+	const user = await locals.getVerifiedUser();
+	const { wallet, error: walletError } = user
+		? await loadWallet(locals.supabase)
+		: { wallet: null, error: null };
+
 	return {
+		wallet,
+		walletError: walletError?.message ?? null,
 		supabaseHealth: await probeSupabase(),
 
 		/**

@@ -1,6 +1,7 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { requireUser } from '#lib/server/auth/guards';
 import { AVAILABILITY_EXAMPLES, LOCATION_EXAMPLES } from '#lib/listings/examples';
+import { loadWallet } from '#lib/server/functions/invoke';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -52,8 +53,17 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.order('day_of_week', { ascending: true })
 	]);
 
+	/**
+	 * Read after the rest, and not in the same `Promise.all`. It calls an Edge
+	 * Function which calls Solana, so it is by far the slowest of these — and a
+	 * wallet that cannot be read must not stop the page rendering the profile.
+	 */
+	const { wallet, error: walletError } = await loadWallet(locals.supabase);
+
 	return {
 		user,
+		wallet,
+		walletError: walletError?.message ?? null,
 		profile: profileResult.data,
 		locations: locationsResult.data ?? [],
 		availability: availabilityResult.data ?? [],
