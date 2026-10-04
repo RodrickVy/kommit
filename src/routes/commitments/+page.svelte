@@ -83,6 +83,9 @@
 						</div>
 
 						<Button href="/commitment/{commitment.id}" variant="secondary" size="sm">View</Button>
+						{#if commitment.status === 'completed'}
+							<a class="receipt-link" href="/commitment/{commitment.id}#receipts">Receipts</a>
+						{/if}
 					</div>
 				</Panel>
 			</li>
@@ -129,5 +132,9 @@
 
 	.empty {
 		color: var(--k-text-muted);
+	}
+
+	.receipt-link {
+		font-size: var(--k-text-sm);
 	}
 </style>

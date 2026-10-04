@@ -48,7 +48,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 	 */
 	if (!commitment) error(404, 'That commitment does not exist.');
 
-	const [eventsResult, settingsResult, paymentResult] = await Promise.all([
+	const [eventsResult, settingsResult, paymentResult, transfersResult] = await Promise.all([
 		locals.supabase
 			.from('commitment_events')
 			.select('id, event_type, actor_role, occurred_at')
@@ -72,7 +72,22 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 			.eq('commitment_id', commitment.id)
 			.order('created_at', { ascending: false })
 			.limit(1)
-			.maybeSingle()
+			.maybeSingle(),
+
+		/**
+		 * On-chain transfers for this commitment, for the receipts list. Row
+		 * Level Security limits this to the viewer's own wallet: their stake
+		 * going in, and their refund coming back. The payment comes from
+		 * `payments`, which both parties can read.
+		 */
+		locals.supabase
+			.from('wallet_transactions')
+			.select('id, type, lamports, solana_signature, completed_at')
+			.eq('commitment_id', commitment.id)
+			.eq('status', 'completed')
+			.not('solana_signature', 'is', null)
+			.in('type', ['commitment_lock', 'commitment_refund', 'commitment_forfeit'])
+			.order('completed_at', { ascending: true })
 	]);
 
 	const isBuyer = commitment.buyer_id === user.id;
@@ -91,6 +106,7 @@ export const load: PageServerLoad = async ({ locals, params, url }) => {
 		events: eventsResult.data ?? [],
 		settings: settingsResult.data,
 		payment: paymentResult.data,
+		transfers: transfersResult.data ?? [],
 		isBuyer,
 		expired
 	};

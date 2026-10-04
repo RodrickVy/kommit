@@ -11,6 +11,7 @@
 	import { formatPrice, formatSol } from '#lib/format';
 	import { COMMITMENT_STATUS_LABELS, EVENT_LABELS, statusTone } from '#lib/commitments/labels';
 	import type { PageProps } from './$types';
+	import { explorerTxUrl } from '#lib/solana/explorer';
 
 	/**
 	 * Commitment detail — `/commitment/[commitment_id]`.
@@ -26,6 +27,30 @@
 	let { data, form }: PageProps = $props();
 
 	const c = $derived(data.commitment);
+	const TRANSFER_LABELS: Record<string, string> = {
+		commitment_lock: 'Your stake put down',
+		commitment_refund: 'Your stake returned',
+		commitment_forfeit: 'Stake forfeited to charity'
+	};
+
+	/** Every on-chain transfer this viewer can see for this commitment. */
+	const receipts = $derived([
+		...data.transfers.map((t) => ({
+			label: TRANSFER_LABELS[t.type] ?? 'Transfer',
+			lamports: t.lamports,
+			signature: t.solana_signature!
+		})),
+		...(data.payment?.status === 'completed' && data.payment.solana_signature
+			? [
+					{
+						label: data.isBuyer ? 'Item payment' : 'Item payment received',
+						lamports: data.payment.amount_lamports,
+						signature: data.payment.solana_signature
+					}
+				]
+			: [])
+	]);
+
 	const myStake = $derived(data.isBuyer ? c.buyer_stake_cents : c.seller_stake_cents);
 	const myStakeLamports = $derived(
 		data.isBuyer ? c.buyer_stake_lamports : c.seller_stake_lamports
@@ -297,8 +322,9 @@
 						</Alert>
 						{#if data.payment.solana_signature}
 							<p class="muted">
-								Transaction
-								<span class="mono">{data.payment.solana_signature.slice(0, 16)}…</span>
+								<a href={explorerTxUrl(data.payment.solana_signature)} target="_blank" rel="noopener noreferrer">
+									View payment receipt on Solana Explorer ↗
+								</a>
 							</p>
 						{/if}
 					</div>
@@ -418,6 +444,24 @@
 
 			<p class="muted">{stakeNote}</p>
 		</Panel>
+
+		{#if receipts.length > 0}
+			<!-- Public, verifiable proof of every transfer this viewer was part of. -->
+			<Panel>
+				<h2 class="panel-title" id="receipts">Solana receipts</h2>
+				<ul class="receipts" role="list">
+					{#each receipts as receipt (receipt.signature)}
+						<li>
+							<span class="receipt-label">{receipt.label}</span>
+							<span class="receipt-amount">{formatSol(receipt.lamports)}</span>
+							<a href={explorerTxUrl(receipt.signature)} target="_blank" rel="noopener noreferrer">
+								View on Solana Explorer ↗
+							</a>
+						</li>
+					{/each}
+				</ul>
+			</Panel>
+		{/if}
 
 		<Panel>
 			<h2 class="panel-title">What you can do</h2>
@@ -631,10 +675,6 @@
 		color: var(--k-text-subtle);
 	}
 
-	.mono {
-		font-family: var(--k-font-mono);
-		overflow-wrap: anywhere;
-	}
 
 	.stake {
 		font-size: var(--k-text-2xl);
@@ -659,5 +699,33 @@
 		flex-wrap: wrap;
 		gap: var(--k-space-2);
 		margin-top: var(--k-space-4);
+	}
+
+	.receipts {
+		display: grid;
+		gap: var(--k-space-3);
+		margin: 0;
+		font-size: var(--k-text-sm);
+	}
+
+	.receipts li {
+		display: grid;
+		gap: var(--k-space-1);
+		padding-bottom: var(--k-space-3);
+		border-bottom: var(--k-line-width) solid var(--k-line);
+	}
+
+	.receipts li:last-child {
+		padding-bottom: 0;
+		border-bottom: 0;
+	}
+
+	.receipt-label {
+		font-weight: 600;
+	}
+
+	.receipt-amount {
+		color: var(--k-text-subtle);
+		font-family: var(--k-font-mono);
 	}
 </style>
