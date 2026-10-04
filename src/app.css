@@ -168,6 +168,15 @@
 	--k-chart-text: #b9b3d6;
 	--k-chart-grid: rgb(255 255 255 / 0.08);
 
+	/* Second series on the market chart. Deliberately not green or purple:
+	   reputation shares an axis region with the fee line and has to be
+	   distinguishable from it at a glance. */
+	--k-chart-reputation: #f5c04e;
+
+	/* Donations. A third hue again, because the two charts are read together
+	   and a shared colour would imply a shared quantity. */
+	--k-chart-donation: #7b61ff;
+
 	/* Outcome slices on the same black, kept distinct from one another. */
 	--k-outcome-completed: var(--k-solana-green);
 	--k-outcome-open: var(--k-solana-purple);

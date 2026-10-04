@@ -132,7 +132,12 @@
 
 	<ul class="solana-facts" role="list">
 		<li><Icon icon={faGaugeHigh} /> Settles in seconds</li>
-		<li><Icon icon={faCoins} /> Fees under a cent</li>
+		<!--
+			"Network fees", not "Fees". A visitor reads a bare "Fees" claim as what
+			kommitly charges, and the commitment fee is dollars, not fractions of a
+			cent. Both numbers are true; only one of them is what this line is about.
+		-->
+		<li><Icon icon={faCoins} /> Network fees under a cent</li>
 		<li><Icon icon={faReceipt} /> Every transfer verifiable</li>
 	</ul>
 </section>

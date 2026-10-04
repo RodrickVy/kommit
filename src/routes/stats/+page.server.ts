@@ -1,29 +1,55 @@
+import { parseBucket, windowFor } from '#lib/stats/buckets';
 import type { PageServerLoad } from './$types';
 
 /**
  * Stats, `/stats`.
  *
- * The base commitment fee over time, read like a share price: an hourly line,
- * with a marker wherever the fee went up or down.
+ * Two series on the same buckets: the marketplace price against its average
+ * reputation, and the charity donations underneath. The granularity comes from
+ * `?bucket=`, so a view is a URL someone can send to somebody else.
+ *
+ * WHY THE SERIES REPLACED THE OLD FEE HISTORY
+ * -------------------------------------------
+ * This page used to read `base_fee_history()` and build an hourly line in
+ * TypeScript. That series was the RAW base fee, which only moves when an admin
+ * edits it, so the chart was a flat line by construction. The price people
+ * actually pay is the market-adjusted fee, and `market_price_series` buckets it
+ * at whatever granularity is asked for — including the gap filling, which was
+ * the fiddliest part of the old load and is now one window function in SQL.
+ *
+ * THE TICKER FIGURES COME FROM THE SAME SERIES. They were separately derived
+ * before, which meant the headline number and the chart could disagree.
  */
+export const load: PageServerLoad = async ({ locals, url }) => {
+	/** Falls back rather than erroring, so a mangled URL still shows a chart. */
+	const bucket = parseBucket(url.searchParams.get('bucket'));
+	const { from, to } = windowFor(bucket);
 
-export const load: PageServerLoad = async ({ locals }) => {
-	const [historyResult, settingsResult, outcomesResult, marketResult] = await Promise.all([
-		locals.supabase.rpc('base_fee_history'),
-		locals.supabase
-			.from('market_settings')
-			.select('base_commitment_fee_cents, currency_code')
-			.eq('id', 1)
-			.maybeSingle(),
-		/** Totals per status only; no commitment or person is identifiable. */
-		locals.supabase.rpc('commitment_outcome_counts'),
-		/**
-		 * The headline pair: the market's average reputation, and what it has
-		 * done to the base fee. Both are marketplace-wide aggregates and name
-		 * nobody, which is why this page can be public.
-		 */
-		locals.supabase.rpc('market_fee_summary').maybeSingle()
-	]);
+	const [priceResult, donationResult, marketResult, outcomesResult, settingsResult] =
+		await Promise.all([
+			locals.supabase.rpc('market_price_series', {
+				bucket,
+				from_at: from,
+				to_at: to
+			}),
+			locals.supabase.rpc('charity_donation_series', {
+				bucket,
+				from_at: from,
+				to_at: to
+			}),
+			/**
+			 * The headline pair. Marketplace-wide aggregates that name nobody,
+			 * which is why this page can be public.
+			 */
+			locals.supabase.rpc('market_fee_summary').maybeSingle(),
+			/** Totals per status only; no commitment or person is identifiable. */
+			locals.supabase.rpc('commitment_outcome_counts'),
+			locals.supabase
+				.from('market_settings')
+				.select('currency_code')
+				.eq('id', 1)
+				.maybeSingle()
+		]);
 
 	/**
 	 * How commitments ended, grouped the way people talk about them. Pending
@@ -39,67 +65,47 @@ export const load: PageServerLoad = async ({ locals }) => {
 		{ label: 'Declined', statuses: ['declined'], colour: '--k-outcome-declined' }
 	] as const;
 
-	const counts = new Map((outcomesResult.data ?? []).map((row) => [row.status as string, row.total]));
+	const counts = new Map(
+		(outcomesResult.data ?? []).map((row) => [row.status as string, row.total])
+	);
+
 	const outcomes = OUTCOMES.map((outcome) => ({
 		label: outcome.label,
 		colour: outcome.colour,
 		total: outcome.statuses.reduce((sum, status) => sum + (counts.get(status) ?? 0), 0)
 	})).filter((outcome) => outcome.total > 0);
 
-	const rows = historyResult.data ?? [];
-
-	/** Each change, with how it moved against the previous one. */
-	const points = rows.map((row, index) => {
-		const cents = Number(row.base_fee_cents);
-		const previous = index > 0 ? Number(rows[index - 1]!.base_fee_cents) : null;
-		return {
-			at: row.changed_at,
-			cents,
-			changeCents: previous === null ? 0 : cents - previous,
-			direction: previous === null ? 'start' : cents > previous ? 'up' : 'down'
-		} as const;
-	});
+	const price = priceResult.data ?? [];
 
 	/**
-	 * One point an hour, from the first recorded price to now: the fee in
-	 * effect at the end of each hour. Marks the hours where it changed, so the
-	 * chart can draw a marker there. Capped at the last 30 days (720 points).
+	 * Only buckets with a real price. The leading ones are null when the window
+	 * reaches back before anything was recorded, and a chart should not draw a
+	 * line through a period that had no price.
 	 */
-	const HOUR = 3_600_000;
-	const now = Date.now();
-	const hourly: { at: string; cents: number; change: 'up' | 'down' | null }[] = [];
-
-	if (points.length > 0) {
-		const firstHour = Math.floor(new Date(points[0]!.at).getTime() / HOUR) * HOUR;
-		const start = Math.max(firstHour, Math.floor(now / HOUR) * HOUR - 719 * HOUR);
-		let next = 0;
-		let cents = points[0]!.cents;
-
-		/** The price in effect before the window opens, when history is older. */
-		while (next < points.length && new Date(points[next]!.at).getTime() < start) {
-			cents = points[next]!.cents;
-			next += 1;
-		}
-
-		for (let hour = start; hour <= now; hour += HOUR) {
-			let change: 'up' | 'down' | null = null;
-			while (next < points.length && new Date(points[next]!.at).getTime() < hour + HOUR) {
-				const point = points[next]!;
-				if (point.direction === 'up' || point.direction === 'down') change = point.direction;
-				cents = point.cents;
-				next += 1;
-			}
-			hourly.push({ at: new Date(hour).toISOString(), cents, change });
-		}
-	}
+	const priced = price.filter((row) => row.close_fee_cents !== null);
+	const closes = priced.map((row) => Number(row.close_fee_cents));
 
 	return {
-		points,
-		hourly,
-		outcomes,
-		currentCents: settingsResult.data?.base_commitment_fee_cents ?? null,
-		currencyCode: settingsResult.data?.currency_code ?? 'CAD',
+		bucket,
+		from,
+		to,
+		price,
+		donations: donationResult.data ?? [],
 		market: marketResult.data,
-		loadError: historyResult.error ? 'The fee history could not be loaded.' : null
+		outcomes,
+		currencyCode: settingsResult.data?.currency_code ?? 'CAD',
+
+		/** The ticker, derived from the series it sits above rather than separately. */
+		latestCents: closes.at(-1) ?? null,
+		openCents: closes.at(0) ?? null,
+		highCents: closes.length ? Math.max(...closes) : null,
+		lowCents: closes.length ? Math.min(...closes) : null,
+		eventCount: price.reduce((sum, row) => sum + (row.event_count ?? 0), 0),
+
+		loadError: priceResult.error
+			? 'The price history could not be loaded.'
+			: donationResult.error
+				? 'The donation history could not be loaded.'
+				: null
 	};
 };

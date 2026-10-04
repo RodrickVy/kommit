@@ -188,29 +188,47 @@ export type Database = {
         Row: {
           actor_profile_id: string | null
           actor_role: Database["public"]["Enums"]["commitment_party"] | null
+          buyer_id: string | null
+          buyer_reputation: number | null
           commitment_id: string
           event_type: Database["public"]["Enums"]["commitment_event_type"]
           id: string
+          market_base_fee_cents: number | null
+          market_reputation: number | null
           metadata: Json | null
           occurred_at: string
+          seller_id: string | null
+          seller_reputation: number | null
         }
         Insert: {
           actor_profile_id?: string | null
           actor_role?: Database["public"]["Enums"]["commitment_party"] | null
+          buyer_id?: string | null
+          buyer_reputation?: number | null
           commitment_id: string
           event_type: Database["public"]["Enums"]["commitment_event_type"]
           id?: string
+          market_base_fee_cents?: number | null
+          market_reputation?: number | null
           metadata?: Json | null
           occurred_at?: string
+          seller_id?: string | null
+          seller_reputation?: number | null
         }
         Update: {
           actor_profile_id?: string | null
           actor_role?: Database["public"]["Enums"]["commitment_party"] | null
+          buyer_id?: string | null
+          buyer_reputation?: number | null
           commitment_id?: string
           event_type?: Database["public"]["Enums"]["commitment_event_type"]
           id?: string
+          market_base_fee_cents?: number | null
+          market_reputation?: number | null
           metadata?: Json | null
           occurred_at?: string
+          seller_id?: string | null
+          seller_reputation?: number | null
         }
         Relationships: [
           {
@@ -221,10 +239,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "commitment_events_buyer_id_fkey"
+            columns: ["buyer_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "commitment_events_commitment_id_fkey"
             columns: ["commitment_id"]
             isOneToOne: false
             referencedRelation: "commitments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commitment_events_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
@@ -478,6 +510,7 @@ export type Database = {
       market_settings: {
         Row: {
           active_charity_id: string | null
+          adjusted_base_fee_cents: number
           base_commitment_fee_cents: number
           check_in_radius_metres: number
           check_in_window_minutes: number
@@ -502,6 +535,7 @@ export type Database = {
         }
         Insert: {
           active_charity_id?: string | null
+          adjusted_base_fee_cents?: number
           base_commitment_fee_cents: number
           check_in_radius_metres: number
           check_in_window_minutes: number
@@ -526,6 +560,7 @@ export type Database = {
         }
         Update: {
           active_charity_id?: string | null
+          adjusted_base_fee_cents?: number
           base_commitment_fee_cents?: number
           check_in_radius_metres?: number
           check_in_window_minutes?: number
@@ -1071,6 +1106,15 @@ export type Database = {
       }
       calculate_reputation: { Args: { target: string }; Returns: number }
       cast_charity_vote: { Args: { target: string }; Returns: string }
+      charity_donation_series: {
+        Args: { bucket: string; from_at: string; to_at: string }
+        Returns: {
+          bucket_at: string
+          cumulative_lamports: number
+          donation_count: number
+          lamports: number
+        }[]
+      }
       charity_vote_tally: {
         Args: never
         Returns: {
@@ -1105,6 +1149,19 @@ export type Database = {
           max_fee_cents: number
           min_fee_cents: number
           scored_profiles: number
+        }[]
+      }
+      market_price_series: {
+        Args: { bucket: string; from_at: string; to_at: string }
+        Returns: {
+          avg_fee_cents: number
+          avg_reputation: number
+          bucket_at: string
+          close_fee_cents: number
+          close_reputation: number
+          event_count: number
+          max_fee_cents: number
+          min_fee_cents: number
         }[]
       }
       my_commitment_fee: {
@@ -1159,6 +1216,11 @@ export type Database = {
         }
         Returns: number
       }
+      stats_assert_span: {
+        Args: { bucket: string; from_at: string; to_at: string }
+        Returns: undefined
+      }
+      stats_bucket_step: { Args: { bucket: string }; Returns: string }
     }
     Enums: {
       commitment_event_type:

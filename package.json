@@ -29,7 +29,8 @@
 		"setup:charity-wallets": "node --env-file=.env scripts/setup-charity-wallets.mjs",
 		"run:process-commitments": "node --env-file=.env scripts/invoke-function.mjs process_commitments",
 		"verify:commitments": "node --env-file=.env scripts/verify-commitment-flow.mjs",
-		"verify:reputation": "node --env-file=.env scripts/verify-reputation.mjs"
+		"verify:reputation": "node --env-file=.env scripts/verify-reputation.mjs",
+		"verify:stats": "node --env-file=.env scripts/verify-stats-series.mjs"
 	},
 	"dependencies": {
 		"@fortawesome/free-solid-svg-icons": "7.3.1",
