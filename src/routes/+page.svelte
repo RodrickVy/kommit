@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import {
+		faCircleCheck,
+		faHandshake,
+		faMagnifyingGlassLocation,
+		faPeopleArrows
+	} from '@fortawesome/free-solid-svg-icons';
 	import ListingCard from '#lib/components/listings/ListingCard.svelte';
+	import Icon from '#lib/components/ui/Icon.svelte';
 	import Alert from '#lib/components/ui/Alert.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
@@ -15,6 +22,30 @@
 	 * requested at all.
 	 */
 	let { data }: PageProps = $props();
+
+	/** Find → Commit → Meet → Complete. */
+	const STEPS = [
+		{
+			icon: faMagnifyingGlassLocation,
+			title: 'Find a local deal',
+			text: 'Browse nearby items and choose what you want to buy.'
+		},
+		{
+			icon: faHandshake,
+			title: 'Make a promise to show up',
+			text: 'Put down a small commitment fee to show the seller you’re serious.'
+		},
+		{
+			icon: faPeopleArrows,
+			title: 'Meet and check the item',
+			text: 'Meet the seller in person and make sure everything is as expected.'
+		},
+		{
+			icon: faCircleCheck,
+			title: 'Complete the deal',
+			text: 'Pay the seller and confirm the exchange. Your commitment fee is returned when you follow through.'
+		}
+	];
 
 	const signedIn = $derived(page.data.user != null);
 
@@ -51,19 +82,27 @@
 </svelte:head>
 
 <div class="intro">
-<section class="hero">
-	<h1>Local deals, backed by a promise to show up.</h1>
-	<p class="lede">
-		Buyer and seller each put down a refundable <strong>$2 commitment</strong>. Meet at
-		the agreed place, scan to confirm, and you both get it back. No-shows lose theirs
-		to charity.
-	</p>
+<section class="hero" aria-labelledby="hero-title">
+	<h1 id="hero-title">Local deals, backed by a promise to show up.</h1>
+
+	<!-- The whole idea in four steps: Find → Commit → Meet → Complete. -->
+	<ol class="flow" role="list">
+		{#each STEPS as step, index (step.title)}
+			<li class="step">
+				<span class="step-icon k-cut"><Icon icon={step.icon} /></span>
+				<span class="step-number">Step {index + 1}</span>
+				<h2 class="step-title">{step.title}</h2>
+				<p class="step-text">{step.text}</p>
+			</li>
+		{/each}
+	</ol>
+
 	<div class="hero-actions">
-		<Button href="/discover">Browse listings</Button>
 		{#if signedIn}
-			<Button href="/sell/create_listing" variant="secondary">Sell something</Button>
+			<Button href="/discover">Discover listings</Button>
 		{:else}
-			<Button href="/join" variant="secondary">Create an account</Button>
+			<Button href="/join">Create an account</Button>
+			<span class="hero-note">Free to join. You only put down $2 when you request a meetup.</span>
 		{/if}
 	</div>
 </section>
@@ -143,29 +182,9 @@
 	{/if}
 </section>
 
-<section class="steps" aria-labelledby="steps-title">
-	<h2 id="steps-title">How it works</h2>
-	<ol class="step-list">
-		<li>
-			<span class="step-number">1</span>
-			<h3>Request a meetup</h3>
-			<p>Pick a place and time the seller offers. You put down $2.</p>
-		</li>
-		<li>
-			<span class="step-number">2</span>
-			<h3>The seller commits</h3>
-			<p>When they accept, they put down $2 too. Now you are both on the hook.</p>
-		</li>
-		<li>
-			<span class="step-number">3</span>
-			<h3>Meet and scan</h3>
-			<p>Check in at the spot and scan the seller's code. Both commitments come back.</p>
-		</li>
-	</ol>
-</section>
 
 <style>
-	/* Intro and wallet side by side when there is room; stacked on a phone. */
+	/* The intro needs the full width for its four steps; the wallet follows it. */
 	.intro {
 		display: grid;
 		gap: var(--k-space-5);
@@ -173,16 +192,10 @@
 		margin-bottom: var(--k-space-6);
 	}
 
-	@media (min-width: 60rem) {
-		.intro {
-			grid-template-columns: minmax(0, 1fr) 22rem;
-		}
-	}
 
 	.hero {
 		display: grid;
-		gap: var(--k-space-4);
-		max-width: 46rem;
+		gap: var(--k-space-5);
 		padding-block: var(--k-space-4) 0;
 	}
 
@@ -191,15 +204,85 @@
 		line-height: 1.15;
 	}
 
-	.lede {
+
+	.hero h1 {
+		max-width: 22ch;
+	}
+
+	.flow {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(min(13rem, 100%), 1fr));
+		gap: var(--k-space-3);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.step {
+		display: grid;
+		align-content: start;
+		gap: var(--k-space-2);
+		padding: var(--k-space-4);
+		background-color: var(--k-surface-raised);
+	}
+
+	.step-icon {
+		display: grid;
+		place-items: center;
+		width: 2.75rem;
+		height: 2.75rem;
+		margin-bottom: var(--k-space-1);
+		background-color: var(--k-primary);
+		color: var(--k-on-primary);
+		font-size: 1.25rem;
+	}
+
+	.step-number {
+		color: var(--k-primary);
+		font-size: var(--k-text-xs);
+		font-weight: 700;
+		letter-spacing: var(--k-tracking-wide);
+		text-transform: uppercase;
+	}
+
+	.step-title {
+		font-size: var(--k-text-base);
+		line-height: 1.3;
+	}
+
+	.step-text {
 		color: var(--k-text-muted);
-		font-size: var(--k-text-lg);
+		font-size: var(--k-text-sm);
+	}
+
+	/* On a phone, each step is a compact row: icon beside the text. */
+	@media (max-width: 40rem) {
+		.step {
+			grid-template-columns: auto 1fr;
+			column-gap: var(--k-space-3);
+			row-gap: var(--k-space-1);
+			padding: var(--k-space-3);
+		}
+
+		.step-icon {
+			grid-row: span 3;
+			width: 2.25rem;
+			height: 2.25rem;
+			margin-bottom: 0;
+			font-size: 1rem;
+		}
 	}
 
 	.hero-actions {
 		display: flex;
 		flex-wrap: wrap;
-		gap: var(--k-space-2);
+		align-items: center;
+		gap: var(--k-space-3);
+	}
+
+	.hero-note {
+		color: var(--k-text-subtle);
+		font-size: var(--k-text-sm);
 	}
 
 	.wallet {
@@ -226,8 +309,7 @@
 		margin-bottom: var(--k-space-4);
 	}
 
-	.preview-head h2,
-	.steps h2 {
+	.preview-head h2 {
 		font-size: var(--k-text-xl);
 	}
 
@@ -296,44 +378,11 @@
 		flex: 1;
 	}
 
-	.steps {
-		padding-top: var(--k-space-6);
-		border-top: var(--k-line-width) solid var(--k-line);
-	}
 
-	.step-list {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(min(14rem, 100%), 1fr));
-		gap: var(--k-space-4);
-		margin: var(--k-space-4) 0 0;
-		padding: 0;
-		list-style: none;
-	}
 
-	.step-list li {
-		display: grid;
-		gap: var(--k-space-2);
-		align-content: start;
-	}
 
-	.step-number {
-		display: grid;
-		place-items: center;
-		width: 2rem;
-		height: 2rem;
-		background-color: var(--k-primary);
-		color: var(--k-on-primary);
-		font-weight: 700;
-	}
 
-	.step-list h3 {
-		font-size: var(--k-text-base);
-	}
 
-	.step-list p {
-		color: var(--k-text-muted);
-		font-size: var(--k-text-sm);
-	}
 
 	@media (prefers-reduced-motion: reduce) {
 		.track {
