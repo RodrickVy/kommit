@@ -1058,6 +1058,13 @@ export type Database = {
     }
     Functions: {
       apply_charity_vote_result: { Args: never; Returns: string }
+      base_fee_history: {
+        Args: never
+        Returns: {
+          base_fee_cents: number
+          changed_at: string
+        }[]
+      }
       calculate_reputation: { Args: { target: string }; Returns: number }
       cast_charity_vote: { Args: { target: string }; Returns: string }
       charity_vote_tally: {
@@ -1069,6 +1076,13 @@ export type Database = {
         }[]
       }
       commitment_fee_cents: { Args: { target: string }; Returns: number }
+      commitment_outcome_counts: {
+        Args: never
+        Returns: {
+          status: Database["public"]["Enums"]["commitment_status"]
+          total: number
+        }[]
+      }
       current_vote_month: { Args: never; Returns: string }
       has_commitment_on_listing: {
         Args: { target_listing: string }

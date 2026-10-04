@@ -158,6 +158,24 @@
 	--k-band-text-muted: #c9c3e6;
 	--k-band-accent-from: var(--k-solana-purple);
 	--k-band-accent-to: var(--k-solana-green);
+
+	/* The fee chart on /stats: black, in Solana's colours, in both themes. */
+	--k-chart-bg: #000000;
+	--k-chart-line: var(--k-solana-green);
+	--k-chart-area: var(--k-solana-purple);
+	--k-chart-up: var(--k-solana-green);
+	--k-chart-down: #ff5c7a;
+	--k-chart-text: #b9b3d6;
+	--k-chart-grid: rgb(255 255 255 / 0.08);
+
+	/* Outcome slices on the same black, kept distinct from one another. */
+	--k-outcome-completed: var(--k-solana-green);
+	--k-outcome-open: var(--k-solana-purple);
+	--k-outcome-cancelled: #ff5c7a;
+	--k-outcome-no-show: #ffb347;
+	--k-outcome-stale: #19c3ff;
+	--k-outcome-expired: #8a84ad;
+	--k-outcome-declined: #4f4a6b;
 }
 
 /* --------------------------------------------------------------------------
