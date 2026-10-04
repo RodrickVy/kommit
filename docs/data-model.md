@@ -60,28 +60,44 @@ OTP, so no password exists anywhere in the system to store.
 | `description` | `text` | yes | Public bio. |
 | `reputation` | `numeric` | yes | Written **only** by the reputation Cloud Function. Null means "not yet calculated" — deliberately not defaulted to a number, because an invented starting score would be indistinguishable from a real one. |
 | `reputation_updated_at` | `timestamptz` | yes | When the function last wrote the score. |
-| `transactions_to_date` | `integer` | no | Default 0. |
-| `transactions_cancelled` | `integer` | no | Default 0. |
-| `transactions_expired` | `integer` | no | Default 0. |
-| `transactions_ignored` | `integer` | no | Default 0. Seller-side only — only a seller can ignore an incoming request. |
-| `transactions_unverified` | `integer` | no | Default 0. **See open question 6 — the triggering event is not yet defined.** |
+| `commitments_total` | `integer` | no | Default 0. Every commitment this user has been part of, in either role. |
+| `commitments_successful` | `integer` | no | Default 0. Meetup verified and the commitment fulfilled. |
+| `commitments_expired` | `integer` | no | Default 0. |
+| `commitments_cancelled` | `integer` | no | Default 0. |
+| `commitments_ignored` | `integer` | no | Default 0. Seller-side only — only a seller can ignore an incoming request. |
+| `commitments_unverified` | `integer` | no | Default 0. **Open question 5 — the triggering event is still undefined.** |
+| `email_receipts_enabled` | `boolean` | no | Default false. When on, the user is emailed a receipt. Opt-in, not opt-out. |
 | `last_vote` | `timestamptz` | yes | Most recent charity vote. |
 | `last_vote_choice` | `uuid` | yes | FK to `charities(id)`. |
 | `created_at` | `timestamptz` | no | |
 | `updated_at` | `timestamptz` | no | |
 
-### On the counters
+### The naming rule
 
-All five counters are kept exactly as specified. §38 marks
-`transactions_ignored` and `transactions_unverified` as intentional, and none
-of them are being removed, renamed or replaced with a view.
+**"Transaction" is wallet vocabulary and appears nowhere on a profile.** A
+profile counts *commitments*, because it is commitment behaviour — showing up,
+cancelling, ignoring a request — that reputation is built from. Money movement
+is a separate concern that lives in `wallet_transactions` and is the only place
+the word transaction is used.
 
-§8 also requires that buyer and seller behaviour stay distinguishable. These
-counters are aggregates and cannot express that on their own — so rather than
-adding role-split columns and restructuring the model, the role-level detail
-lives in `commitment_events` (§9 below), which records the actor and their role
-for every state change. The reputation Cloud Function can derive any
-role-specific figure from there without this table changing shape.
+This also resolves a duplicate. The original model had `Transactions_to_date`
+while §32 had `Transactions_completed`; those were two names for overlapping
+ideas. They are now two clearly distinct counters:
+
+- `commitments_total` — how many the user has been involved in at all
+- `commitments_successful` — how many actually ended in a verified meetup
+
+Together those answer "how experienced is this person" and "how reliable are
+they", which one merged counter could not.
+
+### Buyer and seller behaviour
+
+§8 requires the two roles stay distinguishable. These counters are aggregates
+and cannot express that on their own — so rather than doubling every column,
+the role-level detail lives in `commitment_events` (§11), which records the
+actor and their role for every state change. The reputation Cloud Function
+derives any role-specific figure from there, and this table never changes
+shape as the reputation algorithm evolves.
 
 ---
 
@@ -93,19 +109,24 @@ role-specific figure from there without this table changing shape.
 | `name` | `text` | no | |
 | `description` | `text` | yes | |
 | `logo_path` | `text` | yes | Path in Supabase Storage. |
-| `payout_reference` | `text` | yes | How forfeited funds reach this charity. **See open question 9** — the rail is undecided, so this is deliberately a free-text reference rather than a Solana address column. |
 | `is_active` | `boolean` | no | Default true. Inactive charities stay for historical votes. |
 | `created_at` | `timestamptz` | no | |
 
-## 3. `charity_votes` — PROPOSED, NOT APPROVED
+**A charity holds a wallet, exactly like a user does.** There is no separate
+payout mechanism and no address column here: forfeited stakes move into the
+charity's own wallet through the same ledger every other transfer uses. See
+§15, where `wallets` is owned by either a profile or a charity.
 
-**This table is additive and is not yet authorised.** `profiles.last_vote` and
-`profiles.last_vote_choice` remain exactly as specified either way.
+The benefit is that charity money is not a special case. A forfeit is an
+ordinary transfer with an ordinary audit trail, and "how much has this charity
+received" is answered by the same query that answers it for anyone else.
 
-The reason to add it: those two fields keep only each user's most recent vote.
-That is enough to show a current winner, but it cannot produce a leaderboard,
-show how support changed over time, or let a disputed tally be audited — the
-previous vote is overwritten and gone.
+## 3. `charity_votes`
+
+`profiles.last_vote` and `profiles.last_vote_choice` remain as specified and
+hold the most recent vote. This table holds the history, which is what makes a
+leaderboard, a trend and an auditable tally possible — those two fields alone
+overwrite the previous vote and lose it.
 
 | Field | Type | Null | Notes |
 | --- | --- | --- | --- |
@@ -113,9 +134,16 @@ previous vote is overwritten and gone.
 | `profile_id` | `uuid` | no | FK to `profiles(id)`. |
 | `charity_id` | `uuid` | no | FK to `charities(id)`. |
 | `voted_at` | `timestamptz` | no | |
+| `vote_month` | `date` | no | The first day of the month the vote belongs to, derived from `voted_at`. |
 
-A uniqueness rule (one vote per user per voting period) cannot be written until
-**open question 8** defines what a voting period is.
+**One vote per user per calendar month**, enforced by a unique constraint on
+`(profile_id, vote_month)`.
+
+`vote_month` is stored rather than computed from `voted_at` in the constraint,
+because a unique index over an expression involving a timezone is fragile — the
+month a vote falls in would depend on the server's timezone at query time. A
+concrete column makes the rule explicit and stable. Which timezone decides the
+month boundary is still worth settling (open question 7).
 
 ---
 
@@ -164,7 +192,27 @@ Seller-owned, same two-level pattern as locations.
 | `is_archived` | `boolean` | no | Default false. |
 | `created_at` | `timestamptz` | no | |
 
-**Open question 7:** this models concrete dated slots, matching the original
+### A slot is consumed by an accepted commitment
+
+**Once a buyer and seller both hold a commitment at a given time, that slot is
+taken.** It must stop being offered to anyone else.
+
+This is a real constraint, not a display rule: a seller cannot be in two places
+at once, so two accepted commitments for the same slot would guarantee at least
+one no-show — and the model would then penalise someone for a situation the
+platform created.
+
+The slot is held from the moment the seller **accepts**, not from the moment a
+buyer requests. Several buyers may request the same slot while it is still
+unaccepted; the first acceptance takes it, and the rest can no longer be
+accepted for that time.
+
+Enforcing this needs a uniqueness rule over "accepted commitments for this
+seller at this time", which only applies to live statuses — a cancelled or
+expired commitment must release the slot. In Postgres that is a partial unique
+index restricted to the active statuses.
+
+**Open question 6:** this models concrete dated slots, matching the original
 model's `Date` / `Start Time` / `End Time`. If sellers should instead set
 recurring weekly availability, this table changes shape.
 
@@ -358,13 +406,22 @@ Proves the two people met. Does **not** buy anything.
 | `issued_at` | `timestamptz` | no | |
 | `expires_at` | `timestamptz` | no | |
 | `scanned_at` | `timestamptz` | yes | |
+| `is_consumed` | `boolean` | no | Default false. Set true on the first successful scan. |
 
-**Open question 10 is a security question, not a cosmetic one.** If the QR
-encodes only the commitment id, it is a static value that can be screenshotted
-and sent to someone a hundred miles away, who scans it and "verifies" a meetup
-that never happened. That defeats the single guarantee QR #1 exists to provide.
-A short-lived rotating token closes it. The shape above assumes a token, but
-the issuing and expiry rules are not mine to invent.
+### Single use
+
+**The code works exactly once.** On the first successful scan it is consumed,
+the meetup is verified, and the code is dead — a second scan of the same code
+fails, whoever presents it.
+
+This is also what makes the token meaningful rather than decorative. A QR
+encoding only the commitment id would be a static value: screenshot it, send it
+to someone a hundred miles away, and they could "verify" a meetup that never
+happened. A generated single-use token cannot be replayed, because the first
+use destroys it.
+
+The code is dead once the commitment completes regardless, so an unscanned code
+on a finished commitment is never valid.
 
 ## 14. `payments` — QR #2
 
@@ -391,12 +448,24 @@ precedes it.
 
 ## 15. `wallets`
 
-One per user. Created by the wallet Cloud Function, never by the app.
+One per user **and one per charity**. Created by the wallet Cloud Function,
+never by the app.
+
+A charity receives forfeited stakes into a wallet exactly like any other
+holder, so there is no separate payout path to build, test and reconcile. A
+forfeit is an ordinary transfer between two wallets.
+
+**Exactly one of `profile_id` and `charity_id` is set**, enforced by a check
+constraint. Two nullable foreign keys with a check are used rather than a
+polymorphic `owner_type` / `owner_id` pair, because this keeps real referential
+integrity — the database can still guarantee the owner exists, which a
+polymorphic column cannot.
 
 | Field | Type | Null | Notes |
 | --- | --- | --- | --- |
 | `id` | `uuid` | no | PK. |
-| `profile_id` | `uuid` | no | FK to `profiles(id)`, unique. |
+| `profile_id` | `uuid` | yes | FK to `profiles(id)`, unique. Set for a user's wallet. |
+| `charity_id` | `uuid` | yes | FK to `charities(id)`, unique. Set for a charity's wallet. |
 | `solana_address` | `text` | no | Public address, unique. **Public key only.** |
 | `available_balance_cents` | `bigint` | no | Default 0. Spendable. |
 | `locked_balance_cents` | `bigint` | no | Default 0. Held against active commitments. |
@@ -445,10 +514,16 @@ to `completed` or `failed`, and nothing else about it changes.
 `deposit` · `withdrawal` · `commitment_lock` · `commitment_refund` ·
 `commitment_forfeit` · `purchase` · `sale`
 
-Exactly the seven from the original model. Note that `commitment_lock` and
-`commitment_refund` move money between the two balances on the same wallet and
-touch no blockchain; `deposit` and `withdrawal` are the only types that cross
-the Solana boundary.
+Exactly the seven from the original model.
+
+Three groupings behave differently and it is worth being explicit:
+
+- `commitment_lock` and `commitment_refund` move money between the two balances
+  **on a single wallet**. One row, no counterparty, no blockchain.
+- `commitment_forfeit`, `purchase` and `sale` move money **between two
+  wallets**, so each produces a pair of rows written together. A forfeit debits
+  the user and credits the charity's wallet.
+- `deposit` and `withdrawal` are the only types that cross the Solana boundary.
 
 ---
 
@@ -471,7 +546,7 @@ reputation then offsets.
 No formula for `market_reputation` or for the per-user stake is defined here.
 Per §38 both are left to their Cloud Function.
 
-## 18. `notifications` — PROPOSED
+## 18. `notifications`
 
 §34 requires the platform to communicate state changes so that users never need
 to exchange contact details. That implies stored, per-user messages.
@@ -485,40 +560,54 @@ to exchange contact details. That implies stored, per-user messages.
 | `read_at` | `timestamptz` | yes | |
 | `created_at` | `timestamptz` | no | |
 
-**Open question 11:** in-app only for the MVP, or email as well?
+Email delivery is separate and governed by `profiles.email_receipts_enabled`:
+a user is emailed a receipt only if they have switched it on. In-app
+notifications are not gated by that setting — the platform still has to tell
+someone their counterparty has arrived, whether or not they want email.
 
 ---
 
+## Resolved
+
+Recorded so the reasoning is not re-litigated later.
+
+| Question | Answer |
+| --- | --- |
+| Commitment request expiry | **24 hours.** |
+| GPS check-in radius | **Block radius** — exact metres still needed, see below. |
+| Locations and availability | **Seller-owned and reusable**, applying to every listing by default, with optional per-listing overrides. |
+| Pricing and stakes | **Fiat-denominated.** SOL is converted on deposit; the ledger is fiat throughout. |
+| Reputation formula | **Not defined here.** A dedicated Cloud Function owns it; this model only preserves the inputs. |
+| Voting period | **One vote per user per calendar month.** |
+| How charities receive money | **They hold a wallet**, like any other holder. No separate payout path. |
+| QR #1 reuse | **Single use.** Consumed on first scan, and dead once the commitment completes. |
+| Is a time slot exclusive | **Yes.** An accepted commitment consumes the slot. |
+| Email receipts | **Opt-in**, via `profiles.email_receipts_enabled`. |
+| Profile counter naming | **"Commitment", never "transaction".** Transaction is wallet vocabulary only. |
+| `to_date` vs `completed` | Split into `commitments_total` and `commitments_successful`. |
+| Extra tables | `charity_votes`, `listing_images`, `commitment_events`, `market_settings` and `notifications` are approved. |
+| Check-ins as timestamps | Accepted, rather than booleans. |
+
 ## Open questions
 
-Nothing below should be guessed at. Several are covered by §38's list of things
-not to invent.
+Still unanswered. Several are covered by §38's list of things not to invent.
 
-1. **Which fiat currency** — USD or CAD? It affects display, and whether one
-   currency can be assumed at all.
-2. **`transactions_to_date` vs `transactions_completed`** — the original model
-   lists the former, §32 lists the latter. Are they the same counter under two
-   names, or two different things? Both are currently kept as specified, which
-   may be one too many.
-3. **Block radius in metres.** "A block" ranges from roughly 80m to 200m by
-   city. A number is needed for `check_in_radius_metres`.
-4. **`listing_condition` values** — the exact allowed set.
-5. **`listing_status`** — is the proposed set right, and is the field approved?
-6. **What increments `transactions_unverified`?** It is marked intentional and
-   must not be removed, but no event in the spec is identified as its trigger.
-7. **Availability** — concrete dated slots as modelled, or recurring weekly
-   patterns? And does an accepted commitment consume a slot, or may a seller
-   hold several commitments at one time?
-8. **Voting period** — one vote per user per what? This blocks the uniqueness
-   rule on `charity_votes`, and `charity_votes` itself is still unapproved.
-9. **How forfeited money reaches a charity** — fiat payout off-platform, or an
-   on-chain transfer? This decides whether `payout_reference` is an address.
-10. **QR #1 token mechanics** — rotating short-lived token, or static
-    commitment id? See the security note under `meetup_verifications`.
-11. **Notifications** — in-app only, or email too?
-12. **Deviation to approve:** check-ins modelled as timestamps rather than
-    booleans, per the note under `commitments`.
-13. **Addition to approve:** `charity_votes`, `commitment_events`,
-    `listing_images`, `notifications` and `market_settings` are all tables not
-    in the original list. Each exists to satisfy a requirement in the full
-    specification, but none were explicitly authorised.
+1. **Which fiat currency** — USD or CAD? It affects display and the rate pair
+   the wallet service quotes against.
+2. **Block radius in metres.** "A block" ranges from roughly 80m to 200m
+   depending on the city, so a number is needed for
+   `market_settings.check_in_radius_metres`.
+3. **`listing_condition` values** — the exact allowed set.
+4. **`listing_status`** — is the proposed set (`draft`, `active`, `reserved`,
+   `sold`, `withdrawn`) right?
+5. **What increments `commitments_unverified`?** It is marked intentional in
+   §32 and must not be removed, but no event in the specification is
+   identified as its trigger, so it cannot be wired up yet.
+6. **Availability shape** — concrete dated slots as modelled, or recurring
+   weekly patterns?
+7. **Which timezone decides the month boundary** for the one-vote-per-month
+   rule? A vote at 11pm on the 31st belongs to different months depending on
+   whether the user's timezone or UTC is authoritative.
+8. **Does a buyer's wallet need a Solana address before they can deposit**, or
+   is one created lazily on first deposit? This decides whether wallet
+   creation happens at sign-up or later.

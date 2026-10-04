@@ -180,10 +180,18 @@ Amounts are always integer cents. `profile_id` is always a uuid.
 
 ### 6.1 `POST /wallet/create`
 
-Creates a custodial wallet and its Solana address for a user.
+Creates a custodial wallet and its Solana address for a **user or a charity**.
+
+Exactly one of `profile_id` and `charity_id` must be supplied. A charity holds
+a wallet on the same terms as any user, so forfeited stakes arrive through the
+ordinary ledger rather than a separate payout path.
 
 ```json
 { "profile_id": "uuid", "idempotency_key": "string" }
+```
+
+```json
+{ "charity_id": "uuid", "idempotency_key": "string" }
 ```
 
 ```json
@@ -199,7 +207,9 @@ Creates a custodial wallet and its Solana address for a user.
 - Generates a keypair, stores the **public address only** in `wallets`, and
   places the private key in key management.
 - Writes no ledger row — nothing has moved.
-- Errors: `WALLET_ALREADY_EXISTS`.
+- Supplying both `profile_id` and `charity_id`, or neither, is
+  `INVALID_REQUEST`.
+- Errors: `WALLET_ALREADY_EXISTS`, `INVALID_REQUEST`.
 
 ### 6.2 `GET /wallet/balance?profile_id={uuid}`
 
@@ -331,6 +341,7 @@ acceptance, and for a no-show.
 ```json
 {
   "wallet_transaction_id": "uuid",
+  "charity_wallet_transaction_id": "uuid",
   "amount_cents": 1000,
   "available_balance_cents": 15875,
   "locked_balance_cents": 0,
@@ -339,15 +350,23 @@ acceptance, and for a no-show.
 ```
 
 - As with refund, **the amount is derived from the lock, never supplied.**
-- The money leaves the user's wallet entirely. It must **not** be credited to
-  any Kommitly-owned balance — §12 of the product spec is explicit that
-  forfeited funds are not platform revenue.
-- Ledger row: `type: commitment_forfeit`, `status: completed`, with
-  `charity_id` set.
-- **Open question 9** decides whether this also triggers an on-chain transfer
-  now or accrues for a later payout. Until that is answered, implement the
-  ledger movement only and leave the payout path unbuilt.
-- Errors: `STAKE_NOT_LOCKED`, `STAKE_ALREADY_RESOLVED`.
+- **This is a transfer between two wallets, not a deduction.** It writes two
+  ledger rows in one database transaction: the forfeit against the user's
+  wallet, and a matching credit to the charity's wallet. Both, or neither.
+- As in 6.7, derive the two stored idempotency keys deterministically from the
+  caller's single key so each row stays individually unique.
+- The charity's wallet is located by `charity_id`. If that charity has no
+  wallet, the operation fails with `WALLET_NOT_FOUND` — **do not create one
+  implicitly.** A forfeit silently inventing a wallet would make a
+  misconfigured charity id look successful while the money went nowhere
+  identifiable.
+- The money must **not** touch any Kommitly-owned balance at any point. §12 of
+  the product spec is explicit that forfeited funds are not platform revenue,
+  and routing them through a platform account first would make that
+  indistinguishable in the ledger.
+- Touches no blockchain. Both wallets are custodial, so this is an internal
+  movement.
+- Errors: `STAKE_NOT_LOCKED`, `STAKE_ALREADY_RESOLVED`, `WALLET_NOT_FOUND`.
 
 ### 6.7 `POST /wallet/transfer-purchase`
 
@@ -489,7 +508,8 @@ A build doing any of the following is wrong, regardless of behaviour:
 9. Inferring intent from commitment state — for example, deciding to forfeit
    rather than refund because the commitment "looks" cancelled. The caller
    decides; this service executes.
-10. Crediting forfeited funds to any Kommitly-owned account.
+10. Crediting forfeited funds to any Kommitly-owned account, or routing them
+    through one on the way to a charity.
 11. Accepting calls from anything other than the Kommitly server.
 
 ---
@@ -503,27 +523,40 @@ A build doing any of the following is wrong, regardless of behaviour:
 | `SOLANA_RPC_URL` | Chain endpoint. |
 | `SOLANA_TREASURY_PUBLIC_KEY` | Treasury address. |
 | `SOLANA_TREASURY_PRIVATE_KEY` | Treasury signing key. Set via `supabase secrets set`, never in a file. |
-| Rate provider credentials | **Open question 14** — provider not yet chosen. |
+| Rate provider credentials | **Open question 2** — provider not yet chosen. |
 
 Edge Function secrets are separate from the application's `.env`. Set them
 with `npx supabase secrets set`.
 
 ---
 
-## 11. Open questions blocking implementation
+## 11. Settled
 
-1. **Fiat currency** — USD or CAD? Determines the rate pair.
-2. **Rate provider** — which source for SOL/fiat, and how often is it refreshed?
-   A stale rate silently mis-credits every deposit.
-3. **Rate at deposit only, or also quoted to the user beforehand?** If a user is
-   shown a figure before depositing, the tolerated drift must be defined.
-4. **Charity payout** — ledger-only for now, or an on-chain transfer per
-   forfeit? Affects 6.6.
-5. **Withdrawal minimum and fee handling.** Solana charges a network fee; is it
-   taken from the withdrawal or absorbed by the treasury?
-6. **Key management** — where do custodial private keys live? This is the
-   largest unanswered security question in the contract and should be settled
-   before any key is generated.
-7. **Reconciliation interval** for pending withdrawals.
-8. **Deposit detection** — does something watch the chain and call 6.3, or does
-   a provider webhook? 6.3 assumes it is told; nothing here does the watching.
+| Question | Answer |
+| --- | --- |
+| Custody | **Custodial.** This service holds the keys; users never manage their own. |
+| Unit of account | **Fiat cents.** SOL is a deposit and withdrawal rail only. |
+| How charities are paid | **They hold a wallet.** A forfeit is an ordinary two-wallet transfer. |
+
+## 12. Open questions blocking implementation
+
+1. **Fiat currency** — USD or CAD? Determines the rate pair to quote against.
+2. **Rate provider** — which source for SOL/fiat, and how often is it
+   refreshed? A stale rate silently mis-credits every deposit, and the error is
+   invisible until someone reconciles.
+3. **Is a rate quoted to the user before they deposit?** If a figure is shown
+   in advance, the tolerated drift between quote and credit must be defined.
+4. **Withdrawal minimum, and who pays the network fee** — taken from the
+   withdrawal amount, or absorbed by the treasury? This changes what a user
+   receives, so it cannot be decided during implementation.
+5. **Key management.** Where do the custodial private keys live, how are they
+   encrypted, and who can reach them? **This is the largest unanswered
+   security question in the contract and should be settled before a single key
+   is generated** — retrofitting key storage means migrating live funds.
+6. **Reconciliation interval** for withdrawals left `pending`.
+7. **Deposit detection.** Operation 6.3 assumes it is *told* that SOL has
+   arrived. Nothing in this contract watches the chain. Does a job poll, or
+   does a provider webhook call in? Whoever builds that owns the
+   at-least-once delivery problem, which is why 6.3 is idempotent.
+8. **Wallet creation timing** — at sign-up for every user, or lazily on first
+   deposit?
