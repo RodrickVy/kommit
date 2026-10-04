@@ -24,73 +24,29 @@
 		showWordmark?: boolean;
 	}
 
-	let { size = 'md', showWordmark = true }: Props = $props();
+	let { size = 'md' }: Props = $props();
 </script>
 
 <span class="brand" data-size={size}>
-	<!--
-		`aria-hidden` on the tile: it is decorative, and the wordmark beside it
-		already carries the name. Without this a screen reader would announce
-		"k kommitly".
-
-		When the wordmark is hidden the name still has to be available, so a
-		visually hidden copy takes its place.
-	-->
-	<span class="tile k-cut" aria-hidden="true">k</span>
-
-	{#if showWordmark}
-		<span class="wordmark">kommitly</span>
-	{:else}
-		<span class="k-visually-hidden">kommitly</span>
-	{/if}
+ 
+	 
+	<img class="wordmark" src="/logo.png" alt="kommitly" />
+	 
 </span>
 
 <style>
-	.brand {
-		display: inline-flex;
-		align-items: center;
-		gap: var(--k-space-2);
-		/* Overrides the global link colour when this sits inside an `<a>`. */
-		color: var(--k-text);
-		text-decoration: none;
+	.brand{
+		padding: 1rem;
+		display: inline;
+		margin:0px 0 20px 20px ;
+
+
 	}
 
-	.tile {
-		--k-cut: 5px;
+	.brand img{
+		width:60px;
+		display: inline;
 
-		display: grid;
-		place-items: center;
-		background-color: var(--k-primary);
-		color: var(--k-on-primary);
-		font-weight: 700;
-		/* The glyph is optically centred by the grid; a line-height of 1
-		   stops the tile growing taller than it is wide. */
-		line-height: 1;
-	}
 
-	.wordmark {
-		font-weight: 600;
-		letter-spacing: var(--k-tracking-tight);
-	}
-
-	/* -- size ------------------------------------------------------------ */
-	.brand[data-size='sm'] .tile {
-		width: 1.5rem;
-		height: 1.5rem;
-		font-size: var(--k-text-sm);
-	}
-
-	.brand[data-size='sm'] .wordmark {
-		font-size: var(--k-text-base);
-	}
-
-	.brand[data-size='md'] .tile {
-		width: 2rem;
-		height: 2rem;
-		font-size: var(--k-text-lg);
-	}
-
-	.brand[data-size='md'] .wordmark {
-		font-size: var(--k-text-lg);
 	}
 </style>
