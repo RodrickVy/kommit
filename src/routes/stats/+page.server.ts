@@ -46,7 +46,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			locals.supabase.rpc('commitment_outcome_counts'),
 			locals.supabase
 				.from('market_settings')
-				.select('currency_code')
+				.select('currency_code, sol_price_cents')
 				.eq('id', 1)
 				.maybeSingle()
 		]);
@@ -94,6 +94,14 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		market: marketResult.data,
 		outcomes,
 		currencyCode: settingsResult.data?.currency_code ?? 'CAD',
+
+		/**
+		 * The configured SOL price, for showing donations in money rather than
+		 * lamports. Display only: it is a number an admin typed, so the dollar
+		 * figure is an approximation of what those transfers are worth now, not
+		 * what they were worth when they happened — which nothing records.
+		 */
+		solPriceCents: settingsResult.data?.sol_price_cents ?? null,
 
 		/** The ticker, derived from the series it sits above rather than separately. */
 		latestCents: closes.at(-1) ?? null,

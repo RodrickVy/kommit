@@ -5,7 +5,12 @@
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import TabBar from '#lib/components/ui/TabBar.svelte';
 	import { page } from '$app/state';
-	import { CONDITION_TABS, DISCOVER_SORTS, MAX_QUERY_LENGTH } from '#lib/listings/discover-view';
+	import {
+		CATEGORY_OPTIONS,
+		CONDITION_TABS,
+		DISCOVER_SORTS,
+		MAX_QUERY_LENGTH
+	} from '#lib/listings/discover-view';
 	import type { PageProps } from './$types';
 
 	/**
@@ -19,7 +24,9 @@
 	}));
 
 	/** Whether the visitor has narrowed the list, which changes the empty message. */
-	const narrowed = $derived(data.view.q !== '' || data.view.condition !== 'all');
+	const narrowed = $derived(
+		data.view.q !== '' || data.view.condition !== 'all' || data.view.category !== 'all'
+	);
 
 	/** Pagination keeps the search, condition and sort. */
 	function pageHref(target: number): string {
@@ -62,17 +69,45 @@
 		{#if data.view.q}
 			<a
 				class="clear"
-				href="?condition={data.view.condition}&sort={data.view.sort}"
+				href="?condition={data.view.condition}&category={data.view.category}&sort={data.view.sort}"
 				aria-label="Clear search">×</a
 			>
 		{/if}
 	</div>
 	<input type="hidden" name="condition" value={data.view.condition} />
+	<input type="hidden" name="category" value={data.view.category} />
 	<input type="hidden" name="sort" value={data.view.sort} />
 	<button type="submit" class="search-button k-cut">Search</button>
 </form>
 
 <div class="tabs">
+	<!--
+		A select rather than a TabBar: thirty-five categories would be a tab
+		strip nobody scrolls to the end of. It is still a GET form, so choosing
+		one is a navigation to a shareable URL like every other filter here,
+		and it works without JavaScript — the Go button is only hidden once
+		scripting can submit on change.
+	-->
+	<form method="GET" class="category" data-sveltekit-keepfocus data-sveltekit-noscroll>
+		<input type="hidden" name="q" value={data.view.q} />
+		<input type="hidden" name="condition" value={data.view.condition} />
+		<input type="hidden" name="sort" value={data.view.sort} />
+
+		<label class="k-visually-hidden" for="category">Filter by category</label>
+		<select
+			id="category"
+			name="category"
+			value={data.view.category}
+			onchange={(event) => event.currentTarget.form?.requestSubmit()}
+		>
+			{#each CATEGORY_OPTIONS as option (option.key)}
+				<option value={option.key}>{option.label}</option>
+			{/each}
+		</select>
+
+		<noscript><button type="submit" class="category-go k-cut">Go</button></noscript>
+	</form>
+
 	<TabBar param="condition" tabs={CONDITION_TABS} active={data.view.condition} label="Filter by condition" />
 	<TabBar
 		param="sort"
@@ -94,7 +129,7 @@
 {:else if data.listings.length === 0 && narrowed}
 	<Panel>
 		<p class="empty">
-			Nothing matches {data.view.q ? `“${data.view.q}”` : 'that condition'}.
+			Nothing matches {data.view.q ? `“${data.view.q}”` : 'those filters'}.
 			<a href="/discover">Show all listings</a>
 		</p>
 	</Panel>
@@ -143,6 +178,19 @@
 {/if}
 
 <style>
+	.category select {
+		max-width: 16rem;
+	}
+
+	.category-go {
+		margin-left: var(--k-space-2);
+		padding: var(--k-space-2) var(--k-space-3);
+		background-color: var(--k-primary);
+		color: var(--k-on-primary);
+		border: 0;
+		font-size: var(--k-text-sm);
+	}
+
 	.search {
 		display: flex;
 		gap: var(--k-space-2);

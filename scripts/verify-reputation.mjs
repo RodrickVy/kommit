@@ -97,17 +97,57 @@ async function profileOf(id) {
 	return rows[0];
 }
 
-/** Sets a profile's counters directly, so a score can be tested at a known input. */
-const setCounters = (id, counters) =>
-	rest(`profiles?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(counters) });
+/** Calls a database function the way the Edge Functions do. */
+async function rpc(name, args = {}) {
+	const response = await rest(`rpc/${name}`, { method: 'POST', body: JSON.stringify(args) });
+	const body = await response.json();
+	if (!response.ok) throw new Error(`${name}: ${JSON.stringify(body)}`);
+	return body;
+}
 
-/** Records an outcome exactly as the application does. */
-const emit = (commitmentId, eventType, extra = {}) =>
-	insert('commitment_events', { commitment_id: commitmentId, event_type: eventType, ...extra });
+/**
+ * Sets counters and then scores them, which is the order the application
+ * uses.
+ *
+ * The score used to follow a counter write automatically, through a BEFORE
+ * trigger. That trigger is gone: counters and reputation now have one
+ * explicit writer each, called in sequence by the Edge Function. A test that
+ * only wrote the counters would be asserting the old design.
+ */
+async function setCounters(id, counters) {
+	await rest(`profiles?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(counters) });
+	await rpc('calculate_reputation', { target: id });
+}
+
+/**
+ * Records an outcome exactly as the application does: the event, then the
+ * counters it implies, then the score for whoever those counters moved.
+ *
+ * Mirrors `recordOutcome` in `supabase/functions/_shared/outcome.ts`. The
+ * market recalculation is left to the caller, as it is there.
+ */
+async function emit(commitmentId, eventType, extra = {}) {
+	const event = await insert('commitment_events', {
+		commitment_id: commitmentId,
+		event_type: eventType,
+		...extra
+	});
+
+	const rescore = await rpc('apply_event_counters', {
+		p_commitment_id: commitmentId,
+		p_event_type: eventType
+	});
+
+	for (const profileId of rescore ?? []) {
+		await rpc('calculate_reputation', { target: profileId });
+	}
+
+	return { event, rescore: rescore ?? [] };
+}
 
 async function settings() {
 	const rows = await rest(
-		'market_settings?id=eq.1&select=reputation_outcome_weight,reputation_checkin_weight,base_commitment_fee_cents,min_commitment_fee_cents,max_commitment_fee_cents,market_reputation,market_reputation_weight'
+		'market_settings?id=eq.1&select=reputation_outcome_weight,reputation_checkin_weight,base_commitment_fee_cents,min_commitment_fee_cents,max_commitment_fee_cents,market_reputation,market_reputation_weight,adjusted_base_fee_cents'
 	).then((r) => r.json());
 
 	return rows[0];
@@ -316,14 +356,14 @@ try {
 		);
 	}
 
-	/** The score must be recalculated in the same statement, never left to lag. */
+	/** `calculate_reputation` is the writer, and it stamps the row. */
 	{
 		const before = await profileOf(buyer.id);
 		await setCounters(buyer.id, { commitments_successful: before.commitments_successful + 1 });
 		const after = await profileOf(buyer.id);
 
 		check(
-			'the score moves in the same statement as the counter',
+			'calculate_reputation writes the new score',
 			Number(after.reputation) !== Number(before.reputation),
 			`${before.reputation} -> ${after.reputation}`
 		);
@@ -331,6 +371,64 @@ try {
 			'reputation_updated_at is stamped',
 			after.reputation_updated_at !== before.reputation_updated_at,
 			String(after.reputation_updated_at)
+		);
+	}
+
+	console.log('\nONE WRITER PER PIECE OF STATE');
+
+	/**
+	 * The point of the refactor. Each of these used to happen automatically
+	 * through a trigger; each now has exactly one explicit writer, so nothing
+	 * else may move it.
+	 */
+	{
+		const before = await profileOf(buyer.id);
+
+		/** A bare event insert, with no apply_event_counters call after it. */
+		await insert('commitment_events', {
+			commitment_id: commitment.id,
+			event_type: 'meetup_verified'
+		});
+
+		const after = await profileOf(buyer.id);
+
+		check(
+			'an event insert alone moves no counter',
+			after.commitments_successful === before.commitments_successful,
+			`${before.commitments_successful} -> ${after.commitments_successful}`
+		);
+		check(
+			'an event insert alone does not rescore',
+			Number(after.reputation) === Number(before.reputation),
+			`${before.reputation} -> ${after.reputation}`
+		);
+	}
+
+	{
+		const before = await profileOf(buyer.id);
+
+		/** A bare counter write, with no calculate_reputation call after it. */
+		await rest(`profiles?id=eq.${buyer.id}`, {
+			method: 'PATCH',
+			body: JSON.stringify({ commitments_successful: before.commitments_successful + 3 })
+		});
+
+		const after = await profileOf(buyer.id);
+
+		check(
+			'a counter write alone does not rescore',
+			Number(after.reputation) === Number(before.reputation),
+			`${before.reputation} -> ${after.reputation}`
+		);
+
+		/** And the explicit call brings it back in step. */
+		await rpc('calculate_reputation', { target: buyer.id });
+		const scored = await profileOf(buyer.id);
+
+		check(
+			'calculate_reputation brings it back in step',
+			Number(scored.reputation) !== Number(before.reputation),
+			`${before.reputation} -> ${scored.reputation}`
 		);
 	}
 
@@ -378,14 +476,9 @@ try {
 	console.log('\nMARKET REPUTATION');
 
 	/**
-	 * The bug fixed in 20261006130000. An ordinary outcome updates a COUNTER
-	 * column; the score is then recalculated by a BEFORE trigger. Postgres
-	 * decides `UPDATE OF reputation` from the statement's target columns, so
-	 * the market refresh used to miss every real outcome and only fire when
-	 * something wrote `reputation` explicitly.
-	 *
-	 * This asserts the path that was broken: change a counter, and the market
-	 * average must follow.
+	 * The market average is now the LAST explicit step, not a consequence of
+	 * writing a score. These two assertions are a pair, and the first is the
+	 * one that would catch a trigger creeping back in.
 	 */
 	{
 		const before = (await settings()).market_reputation;
@@ -396,17 +489,37 @@ try {
 			commitments_total: 50
 		});
 
+		const between = (await settings()).market_reputation;
+
+		check(
+			'a score change alone does not move the market average',
+			Number(between) === Number(before),
+			`${before} -> ${between} (a trigger is chaining this again)`
+		);
+
+		const recalculated = await rpc('recalculate_market');
 		const after = (await settings()).market_reputation;
 
 		check(
-			'a counter change refreshes the market average',
+			'recalculate_market moves it',
 			Number(after) !== Number(before),
-			`${before} -> ${after} (stale means the UPDATE OF column list is wrong again)`
+			`${before} -> ${after}`
+		);
+
+		const row = Array.isArray(recalculated) ? recalculated[0] : recalculated;
+
+		check(
+			'it returns the average and the fee it produced',
+			Number(row.market_reputation) === Number(after) &&
+				Number(row.adjusted_base_fee_cents) ===
+					Number((await settings()).adjusted_base_fee_cents),
+			JSON.stringify(row)
 		);
 	}
 
 	/** And it must equal the actual average of every stored score. */
 	{
+		await rpc('recalculate_market');
 		const all = await rest('profiles?select=reputation').then((r) => r.json());
 		const scores = all.map((row) => Number(row.reputation)).filter((n) => Number.isFinite(n));
 		const average = Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 1000) / 1000;
@@ -514,6 +627,7 @@ try {
 			commitment_checkins: 20,
 			commitments_total: 20
 		});
+		await rpc('recalculate_market');
 		const reliable = { reputation: Number((await profileOf(buyer.id)).reputation), fee: await feeFor(buyer.id) };
 
 		await setCounters(buyer.id, {
@@ -522,6 +636,7 @@ try {
 			commitment_checkins: 0,
 			commitments_total: 20
 		});
+		await rpc('recalculate_market');
 		const unreliable = { reputation: Number((await profileOf(buyer.id)).reputation), fee: await feeFor(buyer.id) };
 
 		check(

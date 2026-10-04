@@ -8,7 +8,7 @@
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import TabBar from '#lib/components/ui/TabBar.svelte';
-	import { formatSol } from '#lib/format';
+	import { formatSol, lamportsToCents } from '#lib/format';
 	import { BUCKET_TABS, STATS_BUCKETS } from '#lib/stats/buckets';
 	import type { PageProps } from './$types';
 
@@ -75,6 +75,19 @@
 
 	const donatedTotal = $derived(
 		data.donations.length ? Number(data.donations.at(-1)?.cumulative_lamports ?? 0) : 0
+	);
+
+	/**
+	 * Donations in money, not lamports. Nobody thinks about a forfeited stake
+	 * in SOL — it was quoted in dollars when it was taken.
+	 *
+	 * Falls back to SOL when no rate is configured, rather than showing a
+	 * currency figure derived from a missing number.
+	 */
+	const donated = $derived((lamports: number) =>
+		data.solPriceCents === null
+			? formatSol(lamports)
+			: money(lamportsToCents(lamports, data.solPriceCents))
 	);
 
 	/**
@@ -309,8 +322,13 @@
 					</p>
 				</div>
 				<div class="ticker">
-					<span class="ticker-value">{formatSol(donatedTotal)}</span>
-					<span class="ticker-note">donated over the period shown</span>
+					<span class="ticker-value">{donated(donatedTotal)}</span>
+					<span class="ticker-note">
+						donated over the period shown
+						{#if data.solPriceCents !== null}
+							· at {money(data.solPriceCents)} per SOL
+						{/if}
+					</span>
 				</div>
 			</div>
 
@@ -323,7 +341,7 @@
 				rows={donationRows}
 				bucket={data.bucket}
 				kind="bar"
-				primary={{ name: 'Donated', tone: 'donation', format: formatSol, min: 0 }}
+				primary={{ name: 'Donated', tone: 'donation', format: donated, min: 0 }}
 				height="14rem"
 			/>
 		</Panel>

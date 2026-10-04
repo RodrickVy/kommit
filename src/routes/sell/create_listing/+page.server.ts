@@ -1,7 +1,12 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { parsePriceToCents } from '#lib/format';
 import { requireUser } from '#lib/server/auth/guards';
-import { CONDITION_ORDER, type ListingCondition } from '#lib/listings/labels';
+import {
+	CATEGORY_ORDER,
+	CONDITION_ORDER,
+	type ListingCategory,
+	type ListingCondition
+} from '#lib/listings/labels';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -19,7 +24,7 @@ import type { Actions, PageServerLoad } from './$types';
 
 export const load: PageServerLoad = async ({ locals, url }) => {
 	requireUser(await locals.getVerifiedUser(), url.pathname);
-	return { conditions: CONDITION_ORDER };
+	return { conditions: CONDITION_ORDER, categories: CATEGORY_ORDER };
 };
 
 export const actions: Actions = {
@@ -31,6 +36,7 @@ export const actions: Actions = {
 		const description = String(form.get('description') ?? '').trim();
 		const priceInput = String(form.get('price') ?? '').trim();
 		const condition = String(form.get('condition') ?? '');
+		const category = String(form.get('category') ?? '');
 
 		const errors: Record<string, string> = {};
 
@@ -65,14 +71,28 @@ export const actions: Actions = {
 			errors.condition = 'Choose the item’s condition.';
 		}
 
-		if (Object.keys(errors).length > 0 || priceCents === null || !isValidCondition(condition)) {
+		/** Checked against the real enum for the same reason as the condition. */
+		const isValidCategory = (value: string): value is ListingCategory =>
+			(CATEGORY_ORDER as readonly string[]).includes(value);
+
+		if (!isValidCategory(category)) {
+			errors.category = 'Choose a category.';
+		}
+
+		if (
+			Object.keys(errors).length > 0 ||
+			priceCents === null ||
+			!isValidCondition(condition) ||
+			!isValidCategory(category)
+		) {
 			return fail(400, {
 				errors,
 				formError: null,
 				title,
 				description,
 				price: priceInput,
-				condition
+				condition,
+				category
 			});
 		}
 
@@ -84,6 +104,7 @@ export const actions: Actions = {
 				description: description.length > 0 ? description : null,
 				price_cents: priceCents,
 				condition,
+				category,
 				/** Always a draft. Publishing is a separate, deliberate act. */
 				status: 'draft'
 			})
@@ -97,7 +118,8 @@ export const actions: Actions = {
 				title,
 				description,
 				price: priceInput,
-				condition
+				condition,
+				category
 			});
 		}
 

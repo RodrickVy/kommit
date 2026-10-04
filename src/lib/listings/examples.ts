@@ -13,7 +13,7 @@
  * through the same validation as anything typed by hand.
  */
 
-import type { ListingCondition } from './labels';
+import type { ListingCategory, ListingCondition } from './labels';
 
 export interface ListingExample {
 	readonly title: string;
@@ -21,6 +21,7 @@ export interface ListingExample {
 	/** As the form field expects it: plain decimal text, not cents. */
 	readonly price: string;
 	readonly condition: ListingCondition;
+	readonly category: ListingCategory;
 }
 
 /**
@@ -34,35 +35,40 @@ export const LISTING_EXAMPLES: readonly ListingExample[] = [
 		description:
 			'Bought second-hand three years ago and used in a home office. Height and tilt both work smoothly. Some shine on the armrests, which I have photographed rather than hidden.',
 		price: '450.00',
-		condition: 'used_good'
+		condition: 'used_good',
+		category: 'home_furniture'
 	},
 	{
 		title: 'Specialized Sirrus hybrid bike, medium frame',
 		description:
 			'Ridden one summer along the seawall, stored indoors since. Recently serviced with new cables and a fresh chain. Lock and lights included.',
 		price: '320.00',
-		condition: 'used_like_new'
+		condition: 'used_like_new',
+		category: 'bicycles'
 	},
 	{
 		title: 'IKEA Kallax shelf, 4x4, white',
 		description:
 			'Disassembled and ready to carry. All fixings bagged and taped to the panels. Two small dents on the back board, which faces the wall.',
 		price: '60.00',
-		condition: 'used_good'
+		condition: 'used_good',
+		category: 'home_furniture'
 	},
 	{
 		title: 'Nintendo Switch OLED, boxed with two controllers',
 		description:
 			'Original box, dock and both Joy-Con pairs. Screen protector on since day one. Factory reset and ready to set up.',
 		price: '280.00',
-		condition: 'used_like_new'
+		condition: 'used_like_new',
+		category: 'video_games'
 	},
 	{
 		title: 'Electric standing desk, 48 inch, black',
 		description:
 			'Motor works and holds position reliably. The desktop has visible scratches and one chipped corner, so it is priced to reflect that.',
 		price: '195.00',
-		condition: 'used_fair'
+		condition: 'used_fair',
+		category: 'office_business'
 	}
 ];
 

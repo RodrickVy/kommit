@@ -1,6 +1,7 @@
 import { callerId, serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
 import { privilegedCaller } from '../_shared/privileged.ts';
+import { logStep, recalculateMarket, recordOutcome } from '../_shared/outcome.ts';
 import { meetupDay } from '../_shared/meetup_day.ts';
 import { settleStake, type Party, type SettlementType } from '../_shared/stake.ts';
 
@@ -187,11 +188,22 @@ async function resolveExpiredRequests(db: Db): Promise<Outcome[]> {
 		 * agreed. The reputation service reads these events and owns the
 		 * counters on `profiles`.
 		 */
-		await db.from('commitment_events').insert({
-			commitment_id: candidate.id,
-			event_type: 'request_expired',
-			metadata: { ignored_by: 'seller' }
+		/**
+		 * `deferMarket` throughout this function: a run can resolve many
+		 * commitments, and recalculating the market after each one would write
+		 * the settings row — and a history snapshot — once per commitment
+		 * instead of once per run. The batch reprices once at the end.
+		 */
+		const recorded = await recordOutcome(db, 'process_commitments', {
+			commitmentId: candidate.id,
+			eventType: 'request_expired',
+			metadata: { ignored_by: 'seller' },
+			deferMarket: true
 		});
+
+		if (recorded.failedAt) {
+			console.error('[process_commitments] derived update failed', recorded);
+		}
 
 		const result = await settleAll(db, candidate.id, [{ role: 'buyer', settlement: 'refund' }]);
 
@@ -301,18 +313,32 @@ async function resolveOverdueCommitments(db: Db): Promise<Outcome[]> {
 			continue;
 		}
 
-		if (verdict.status === 'no_show') {
-			await db.from('commitment_events').insert({
-				commitment_id: candidate.id,
-				event_type: verdict.responsibleParty === 'buyer' ? 'buyer_no_show' : 'seller_no_show',
-				actor_role: verdict.responsibleParty
-			});
-		} else {
-			await db.from('commitment_events').insert({
-				commitment_id: candidate.id,
-				event_type: 'commitment_stale',
-				metadata: { reason: verdict.resolution }
-			});
+		/**
+		 * The status claim above is what makes this run once per commitment:
+		 * a re-run finds the row no longer `accepted` and skips it, so a
+		 * retried scheduled run cannot count a no-show twice.
+		 */
+		const recorded = await recordOutcome(
+			db,
+			'process_commitments',
+			verdict.status === 'no_show'
+				? {
+						commitmentId: candidate.id,
+						eventType:
+							verdict.responsibleParty === 'buyer' ? 'buyer_no_show' : 'seller_no_show',
+						actorRole: verdict.responsibleParty,
+						deferMarket: true
+					}
+				: {
+						commitmentId: candidate.id,
+						eventType: 'commitment_stale',
+						metadata: { reason: verdict.resolution },
+						deferMarket: true
+					}
+		);
+
+		if (recorded.failedAt) {
+			console.error('[process_commitments] derived update failed', recorded);
 		}
 
 		const result = await settleAll(
@@ -433,6 +459,8 @@ Deno.serve(async (request: Request) => {
 		 * claim one commitment, survivable, because of the compare-and-sets,
 		 * but it would make a run's output impossible to read.
 		 */
+		logStep('process_commitments', 'run-started', { runBy: caller.adminId ?? 'service_role' });
+
 		const expired = await resolveExpiredRequests(db);
 
 		/**
@@ -446,6 +474,22 @@ Deno.serve(async (request: Request) => {
 		/** Listings whose post-meetup purchase window lapsed without payment. */
 		const { data: released, error: releaseError } = await db.rpc('release_purchase_holds');
 		if (releaseError) console.error('[process_commitments] holds not released', releaseError);
+
+		/**
+		 * One reprice for the whole run.
+		 *
+		 * Every outcome above deferred it, so the settings row is written once
+		 * here rather than once per commitment — which also means one history
+		 * snapshot for the run instead of one per resolution.
+		 *
+		 * Last, after every counter and score has settled, so the average it
+		 * computes includes all of them.
+		 */
+		const market = await recalculateMarket(db, 'process_commitments');
+
+		if (!market.ok) {
+			console.error('[process_commitments] market not recalculated', market.failure);
+		}
 
 		const outcomes = [...expired, ...overdue, ...reconciled];
 		const failures = outcomes.filter((outcome) => outcome.failed.length > 0);
@@ -461,6 +505,10 @@ Deno.serve(async (request: Request) => {
 			resolved: overdue.length,
 			reconciled: reconciled.length,
 			listings_released: released ?? 0,
+
+			/** Null when the reprice failed; every resolution above still stands. */
+			market_reputation: market.ok ? market.marketReputation : null,
+			base_fee_cents: market.ok ? market.baseFeeCents : null,
 
 			/**
 			 * Reported rather than hidden behind a 200. A run that resolved ten

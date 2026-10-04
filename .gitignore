@@ -27,3 +27,17 @@ Thumbs.db
 # Local editor/agent scratch config. `.claude/launch.json` just records how to
 # start the dev server; it is not part of the project's build.
 .claude/
+
+# Stray copies of the environment file.
+#
+# A `.env` saved under another name, or anywhere inside `static/`, is served
+# publicly by SvelteKit and would be committed by `git add -A`. One such copy
+# (`static/message.txt`) held the service role key, the wallet encryption key
+# and the treasury private key, reachable at /message.txt.
+#
+# These patterns stop the mistake reaching a commit. They do NOT stop the file
+# being served — delete it.
+static/*.env
+static/message.txt
+*.env.txt
+env.txt

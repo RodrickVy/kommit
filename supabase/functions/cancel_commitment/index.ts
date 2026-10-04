@@ -1,5 +1,6 @@
 import { callerId, serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
+import { logStep, recordOutcome } from '../_shared/outcome.ts';
 import { settleStake, type Party } from '../_shared/stake.ts';
 
 /**
@@ -96,12 +97,23 @@ Deno.serve(async (request: Request) => {
 			return fail('INVALID_REQUEST', 'This commitment has already been resolved.', 409);
 		}
 
-		await db.from('commitment_events').insert({
-			commitment_id: commitmentId,
-			event_type: isBuyer ? 'buyer_cancelled' : 'seller_cancelled',
-			actor_profile_id: actorId,
-			actor_role: canceller
+		/**
+		 * The status claim above is what makes this run once: a second
+		 * cancellation finds the row no longer `accepted` and returns before
+		 * reaching here, so the counter cannot increment twice.
+		 */
+		logStep('cancel_commitment', 'core-complete', { commitmentId, canceller });
+
+		const outcome = await recordOutcome(db, 'cancel_commitment', {
+			commitmentId,
+			eventType: isBuyer ? 'buyer_cancelled' : 'seller_cancelled',
+			actorId,
+			actorRole: canceller
 		});
+
+		if (outcome.failedAt) {
+			console.error('[cancel_commitment] derived update failed', outcome);
+		}
 
 		/**
 		 * The innocent party is refunded first.

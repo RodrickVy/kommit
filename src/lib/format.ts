@@ -111,3 +111,19 @@ export function formatSol(lamports: number | null): string {
 
 	return `${(lamports / LAMPORTS_PER_SOL).toFixed(4)} SOL`;
 }
+
+/**
+ * Converts lamports to currency minor units at a configured SOL price.
+ *
+ * DISPLAY ONLY, and the caller must say so. `market_settings.sol_price_cents`
+ * is a figure an admin typed, not a quote anybody can transact at, so a dollar
+ * figure derived from it is an approximation of what a past transfer was
+ * worth — not what it was worth at the time, which nothing records.
+ *
+ * Never use this to decide an amount to move. Stakes record the exact lamports
+ * they transferred and refund those; a purchase converts at a live rate and
+ * stores the rate it used.
+ */
+export function lamportsToCents(lamports: number, solPriceCents: number): number {
+	return Math.round((lamports / LAMPORTS_PER_SOL) * solPriceCents);
+}

@@ -2,6 +2,7 @@ import { callerId, serviceClient } from '../_shared/db.ts';
 import { parseCoordinates, validateCheckIn } from '../_shared/geo.ts';
 import { meetupDay } from '../_shared/meetup_day.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
+import { logStep, recordOutcome } from '../_shared/outcome.ts';
 
 /**
  * check_in, records that a participant physically reached the meetup place.
@@ -283,13 +284,24 @@ async function record(
 		return fail('INVALID_REQUEST', 'This commitment was resolved while you were checking in.', 409);
 	}
 
-	await db.from('commitment_events').insert({
-		commitment_id: commitment.id,
-		event_type: role === 'buyer' ? 'buyer_checked_in' : 'seller_checked_in',
-		actor_profile_id: profileId,
-		actor_role: role,
+	/**
+	 * Runs once per participant: a repeat check-in returns at
+	 * `already_checked_in` long before this, so the check-in counter cannot
+	 * increment twice for one person.
+	 */
+	logStep('check_in', 'core-complete', { commitmentId: commitment.id, role });
+
+	const outcome = await recordOutcome(db, 'check_in', {
+		commitmentId: commitment.id,
+		eventType: role === 'buyer' ? 'buyer_checked_in' : 'seller_checked_in',
+		actorId: profileId,
+		actorRole: role,
 		metadata: { distance_metres: validation.distanceMetres }
 	});
+
+	if (outcome.failedAt) {
+		console.error('[check_in] derived update failed', outcome);
+	}
 
 	const fresh: CommitmentRow = { ...commitment, ...applied.data };
 

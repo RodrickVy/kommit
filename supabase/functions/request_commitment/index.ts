@@ -1,5 +1,6 @@
 import { callerId, serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
+import { logStep, recordOutcome } from '../_shared/outcome.ts';
 import { getCommitmentStake, stakeToLamports } from '../_shared/stake.ts';
 import { transferFunds } from '../_shared/transfer.ts';
 import { getPlatformWallet, getUserWallet } from '../_shared/wallets.ts';
@@ -167,12 +168,25 @@ Deno.serve(async (request: Request) => {
 			.update({ buyer_stake_lamports: transfer.lamports })
 			.eq('id', commitmentId);
 
-		await db.from('commitment_events').insert({
-			commitment_id: commitmentId,
-			event_type: 'request_created',
-			actor_profile_id: buyerId,
-			actor_role: 'buyer'
+		/**
+		 * The core action is done: the stake has moved and the request is
+		 * recorded as funded. Everything below is derived, and a failure in it
+		 * must not unwind any of that or invite a retry that would transfer
+		 * again — `recordOutcome` therefore reports failures rather than
+		 * raising them.
+		 */
+		logStep('request_commitment', 'core-complete', { commitmentId });
+
+		const outcome = await recordOutcome(db, 'request_commitment', {
+			commitmentId,
+			eventType: 'request_created',
+			actorId: buyerId,
+			actorRole: 'buyer'
 		});
+
+		if (outcome.failedAt) {
+			console.error('[request_commitment] derived update failed', outcome);
+		}
 
 		return json({
 			commitment_id: commitmentId,

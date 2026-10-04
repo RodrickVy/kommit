@@ -1,5 +1,6 @@
 import { callerId, serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
+import { logStep, recordOutcome } from '../_shared/outcome.ts';
 import { consumeQrToken, releaseQrToken, validateQrToken } from '../_shared/qr.ts';
 import { settleStake } from '../_shared/stake.ts';
 import { meetupDay } from '../_shared/meetup_day.ts';
@@ -203,20 +204,38 @@ async function complete(
 		console.error('[complete_commitment] verification row not written', recorded.error);
 	}
 
-	await db.from('commitment_events').insert([
-		{
-			commitment_id: commitment.id,
-			event_type: 'meetup_verified',
-			actor_profile_id: buyerId,
-			actor_role: 'buyer'
-		},
-		{
-			commitment_id: commitment.id,
-			event_type: 'commitment_completed',
-			actor_profile_id: buyerId,
-			actor_role: 'buyer'
-		}
-	]);
+	/**
+	 * Two events, recorded one at a time rather than as a batch insert.
+	 *
+	 * Only `meetup_verified` moves a counter — it is what marks both parties
+	 * successful. `commitment_completed` is a timeline entry and scores
+	 * nothing, so the market is recalculated once, after the first, and the
+	 * second defers.
+	 *
+	 * The status compare-and-set above is what makes this run once: a second
+	 * scan of the same code returns at `already_completed` without reaching
+	 * here, so neither party can be counted successful twice.
+	 */
+	logStep('complete_commitment', 'core-complete', { commitmentId: commitment.id });
+
+	const verified = await recordOutcome(db, 'complete_commitment', {
+		commitmentId: commitment.id,
+		eventType: 'meetup_verified',
+		actorId: buyerId,
+		actorRole: 'buyer'
+	});
+
+	const completed = await recordOutcome(db, 'complete_commitment', {
+		commitmentId: commitment.id,
+		eventType: 'commitment_completed',
+		actorId: buyerId,
+		actorRole: 'buyer',
+		deferMarket: true
+	});
+
+	if (verified.failedAt || completed.failedAt) {
+		console.error('[complete_commitment] derived update failed', { verified, completed });
+	}
 
 	/**
 	 * Both refunds attempted independently, and reported separately.

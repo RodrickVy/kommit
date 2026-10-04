@@ -1,5 +1,6 @@
 import { callerId, serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
+import { logStep, recordOutcome } from '../_shared/outcome.ts';
 import { getCommitmentStake, settleStake, stakeToLamports } from '../_shared/stake.ts';
 import { transferFunds } from '../_shared/transfer.ts';
 import { getPlatformWallet, getUserWallet } from '../_shared/wallets.ts';
@@ -92,12 +93,24 @@ Deno.serve(async (request: Request) => {
 				.eq('id', commitmentId)
 				.eq('status', 'pending');
 
-			await db.from('commitment_events').insert({
-				commitment_id: commitmentId,
-				event_type: 'seller_declined',
-				actor_profile_id: sellerId,
-				actor_role: 'seller'
+			/**
+			 * The compare-and-set on `pending` above is what makes this run once.
+			 * `seller_declined` moves `commitments_ignored`, which is tracked and
+			 * is not an input to the score, so no reputation or market work
+			 * follows — `recordOutcome` returns an empty rescore list and stops.
+			 */
+			logStep('respond_to_commitment', 'core-complete', { commitmentId, action: 'decline' });
+
+			const outcome = await recordOutcome(db, 'respond_to_commitment', {
+				commitmentId,
+				eventType: 'seller_declined',
+				actorId: sellerId,
+				actorRole: 'seller'
 			});
+
+			if (outcome.failedAt) {
+				console.error('[respond_to_commitment] derived update failed', outcome);
+			}
 
 			/** The buyer's held stake comes straight back. Declining costs nobody. */
 			const settled = await settleStake(db, commitmentId, 'buyer', 'refund');
@@ -221,12 +234,37 @@ async function accept(
 		);
 	}
 
-	await db.from('commitment_events').insert({
-		commitment_id: commitmentId,
-		event_type: 'seller_accepted',
-		actor_profile_id: sellerId,
-		actor_role: 'seller'
+	/**
+	 * THE CORE ACTION IS COMPLETE AND IRREVERSIBLE AT THIS POINT.
+	 *
+	 * The seller has been validated, the buyer's stake was confirmed held,
+	 * the seller's stake has moved, and the commitment is accepted — claimed
+	 * with a compare-and-set, so a second request cannot reach here.
+	 *
+	 * Everything below is derived. A failure in it must not unwind the
+	 * acceptance, must not retry the transfer, and must not return an error
+	 * that invites the seller to try again: they would be charged twice and
+	 * the commitment accepted twice. So the outcome is logged and the
+	 * response still reports success, because the part the seller asked for
+	 * did succeed.
+	 */
+	logStep('respond_to_commitment', 'core-complete', {
+		commitmentId,
+		action: 'accept',
+		stakeLamports: transfer.lamports,
+		signature: transfer.signature
 	});
+
+	const outcome = await recordOutcome(db, 'respond_to_commitment', {
+		commitmentId,
+		eventType: 'seller_accepted',
+		actorId: sellerId,
+		actorRole: 'seller'
+	});
+
+	if (outcome.failedAt) {
+		console.error('[respond_to_commitment] derived update failed', outcome);
+	}
 
 	return json({
 		commitment_id: commitmentId,
@@ -234,6 +272,10 @@ async function accept(
 		stake_cents: stakeCents,
 		stake_lamports: transfer.lamports,
 		signature: transfer.signature,
-		explorer: transfer.explorer
+		explorer: transfer.explorer,
+
+		/** Null when a derived step failed; the acceptance itself still stands. */
+		market_reputation: outcome.marketReputation,
+		base_fee_cents: outcome.baseFeeCents
 	});
 }

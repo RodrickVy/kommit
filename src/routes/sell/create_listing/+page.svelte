@@ -6,7 +6,7 @@
 	import Field from '#lib/components/ui/Field.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
-	import { CONDITION_LABELS } from '#lib/listings/labels';
+	import { CATEGORY_LABELS, CONDITION_LABELS } from '#lib/listings/labels';
 	import { LISTING_EXAMPLES } from '#lib/listings/examples';
 	import type { PageProps } from './$types';
 
@@ -37,6 +37,7 @@
 	let title = $state(untrack(() => form?.title) ?? '');
 	let price = $state(untrack(() => form?.price) ?? '');
 	let condition = $state(untrack(() => form?.condition) ?? '');
+	let category = $state(untrack(() => form?.category) ?? '');
 	let description = $state(untrack(() => form?.description) ?? '');
 
 	/** Which example to offer next, so repeated clicks cycle rather than repeat. */
@@ -57,6 +58,7 @@
 		title = example.title;
 		price = example.price;
 		condition = example.condition;
+		category = example.category;
 		description = example.description;
 
 		exampleIndex += 1;
@@ -159,6 +161,29 @@
 							<option value="" disabled>Choose a condition</option>
 							{#each data.conditions as value (value)}
 								<option {value}>{CONDITION_LABELS[value]}</option>
+							{/each}
+						</select>
+					{/snippet}
+				</Field>
+
+				<Field
+					id="category"
+					label="Category"
+					hint="How buyers will find it when they filter Discover."
+					error={form?.errors?.category}
+				>
+					{#snippet children({ id, describedBy, invalid })}
+						<select
+							{id}
+							name="category"
+							required
+							bind:value={category}
+							aria-describedby={describedBy}
+							aria-invalid={invalid}
+						>
+							<option value="" disabled>Choose a category</option>
+							{#each data.categories as value (value)}
+								<option {value}>{CATEGORY_LABELS[value]}</option>
 							{/each}
 						</select>
 					{/snippet}

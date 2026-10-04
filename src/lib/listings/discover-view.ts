@@ -1,4 +1,9 @@
-import { CONDITION_LABELS, CONDITION_ORDER } from '#lib/listings/labels';
+import {
+	CATEGORY_LABELS,
+	CATEGORY_ORDER,
+	CONDITION_LABELS,
+	CONDITION_ORDER
+} from '#lib/listings/labels';
 
 /**
  * Search, filter and sort options for Discover. Shared by the load function,
@@ -17,6 +22,18 @@ export type DiscoverSort = keyof typeof DISCOVER_SORTS;
 export const CONDITION_TABS = [
 	{ key: 'all', label: 'All' },
 	...CONDITION_ORDER.map((key) => ({ key, label: CONDITION_LABELS[key] }))
+] as const;
+
+/**
+ * Categories for the filter, with "All" first.
+ *
+ * A select rather than tabs, unlike conditions: there are thirty-five of
+ * them, and a tab bar that long is a horizontal scroll nobody reads to the
+ * end of.
+ */
+export const CATEGORY_OPTIONS = [
+	{ key: 'all', label: 'All categories' },
+	...CATEGORY_ORDER.map((key) => ({ key, label: CATEGORY_LABELS[key] }))
 ] as const;
 
 /** The longest search kept; anything beyond is noise, not a query. */

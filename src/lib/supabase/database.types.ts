@@ -465,6 +465,7 @@ export type Database = {
       }
       listings: {
         Row: {
+          category: Database["public"]["Enums"]["listing_category"]
           condition: Database["public"]["Enums"]["listing_condition"]
           created_at: string
           description: string | null
@@ -476,6 +477,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: Database["public"]["Enums"]["listing_category"]
           condition: Database["public"]["Enums"]["listing_condition"]
           created_at?: string
           description?: string | null
@@ -487,6 +489,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: Database["public"]["Enums"]["listing_category"]
           condition?: Database["public"]["Enums"]["listing_condition"]
           created_at?: string
           description?: string | null
@@ -1097,6 +1100,13 @@ export type Database = {
     Functions: {
       adjusted_base_fee_cents: { Args: never; Returns: number }
       apply_charity_vote_result: { Args: never; Returns: string }
+      apply_event_counters: {
+        Args: {
+          p_commitment_id: string
+          p_event_type: Database["public"]["Enums"]["commitment_event_type"]
+        }
+        Returns: string[]
+      }
       base_fee_history: {
         Args: never
         Returns: {
@@ -1205,6 +1215,13 @@ export type Database = {
           total: number
         }[]
       }
+      recalculate_market: {
+        Args: never
+        Returns: {
+          adjusted_base_fee_cents: number
+          market_reputation: number
+        }[]
+      }
       refresh_market_reputation: { Args: never; Returns: number }
       release_purchase_holds: { Args: never; Returns: number }
       reputation_score: {
@@ -1249,6 +1266,42 @@ export type Database = {
         | "no_show"
         | "stale"
         | "completed"
+      listing_category:
+        | "vehicles"
+        | "auto_parts"
+        | "motorcycles"
+        | "bicycles"
+        | "electronics"
+        | "computers"
+        | "phones_tablets"
+        | "video_games"
+        | "tvs_audio"
+        | "home_furniture"
+        | "home_appliances"
+        | "kitchen_dining"
+        | "home_decor"
+        | "tools_hardware"
+        | "garden_outdoor"
+        | "clothing"
+        | "shoes"
+        | "bags_accessories"
+        | "jewelry_watches"
+        | "health_beauty"
+        | "baby_kids"
+        | "toys_games"
+        | "sports_fitness"
+        | "musical_instruments"
+        | "books_movies_music"
+        | "pet_supplies"
+        | "office_business"
+        | "collectibles_antiques"
+        | "arts_crafts"
+        | "industrial_equipment"
+        | "building_materials"
+        | "cameras_photography"
+        | "outdoor_recreation"
+        | "seasonal_holiday"
+        | "other"
       listing_condition: "new" | "used_like_new" | "used_good" | "used_fair"
       listing_status: "draft" | "active" | "reserved" | "sold" | "withdrawn"
       payment_status: "pending" | "completed" | "failed"
@@ -1416,6 +1469,43 @@ export const Constants = {
         "no_show",
         "stale",
         "completed",
+      ],
+      listing_category: [
+        "vehicles",
+        "auto_parts",
+        "motorcycles",
+        "bicycles",
+        "electronics",
+        "computers",
+        "phones_tablets",
+        "video_games",
+        "tvs_audio",
+        "home_furniture",
+        "home_appliances",
+        "kitchen_dining",
+        "home_decor",
+        "tools_hardware",
+        "garden_outdoor",
+        "clothing",
+        "shoes",
+        "bags_accessories",
+        "jewelry_watches",
+        "health_beauty",
+        "baby_kids",
+        "toys_games",
+        "sports_fitness",
+        "musical_instruments",
+        "books_movies_music",
+        "pet_supplies",
+        "office_business",
+        "collectibles_antiques",
+        "arts_crafts",
+        "industrial_equipment",
+        "building_materials",
+        "cameras_photography",
+        "outdoor_recreation",
+        "seasonal_holiday",
+        "other",
       ],
       listing_condition: ["new", "used_like_new", "used_good", "used_fair"],
       listing_status: ["draft", "active", "reserved", "sold", "withdrawn"],

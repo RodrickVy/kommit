@@ -1,5 +1,6 @@
 import { callerId, serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
+import { logStep, recordOutcome } from '../_shared/outcome.ts';
 import { cadCentsToLamports } from '../_shared/money.ts';
 import { getSolRate } from '../_shared/price.ts';
 import { consumeQrToken, validateQrToken } from '../_shared/qr.ts';
@@ -397,12 +398,22 @@ async function pay(
 		console.error('[pay_commitment] token already consumed at completion', { paymentId });
 	}
 
-	await db.from('commitment_events').insert({
-		commitment_id: commitment.id,
-		event_type: 'purchase_completed',
-		actor_profile_id: buyerId,
-		actor_role: 'buyer'
+	/**
+	 * `purchase_completed` moves no counter and no score — buying is not a
+	 * reliability signal — so this records the event and stops there.
+	 */
+	logStep('pay_commitment', 'core-complete', { paymentId, signature: transfer.signature });
+
+	const outcome = await recordOutcome(db, 'pay_commitment', {
+		commitmentId: commitment.id,
+		eventType: 'purchase_completed',
+		actorId: buyerId,
+		actorRole: 'buyer'
 	});
+
+	if (outcome.failedAt) {
+		console.error('[pay_commitment] derived update failed', outcome);
+	}
 
 	return json({
 		quote: false,

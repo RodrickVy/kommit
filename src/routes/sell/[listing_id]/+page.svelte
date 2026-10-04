@@ -13,6 +13,7 @@
 	import Field from '#lib/components/ui/Field.svelte';
 	import { listingImageUrl } from '#lib/listings/images';
 	import {
+		CATEGORY_LABELS,
 		CONDITION_LABELS,
 		DAY_LABELS,
 		STATUS_DESCRIPTIONS,
@@ -29,6 +30,9 @@
 	 * every action re-checks ownership before it writes.
 	 */
 	let { data, form }: PageProps = $props();
+
+	/** Five photographs per listing, enforced by a trigger in the database. */
+	const atImageLimit = $derived(data.images.length >= data.maxImages);
 
 	let saving = $state(false);
 
@@ -117,7 +121,20 @@
 		{#if data.isOwner}
 			<Panel>
 				<h2 class="panel-title">Photographs</h2>
-				<ImageUploader />
+
+				<!--
+					The count is shown whether or not the limit is reached. A control
+					that simply stops working at five, with the reason only appearing
+					once it has, reads as a fault rather than a rule.
+				-->
+				<p class="photo-count">
+					{data.images.length} of {data.maxImages} added.
+					{#if atImageLimit}
+						Remove one to add another.
+					{/if}
+				</p>
+
+				<ImageUploader disabled={atImageLimit} />
 			</Panel>
 		{/if}
 
@@ -215,6 +232,34 @@
 							{/snippet}
 						</Field>
 
+						<!--
+							Listings made before categories existed default to "Other /
+							Miscellaneous". This is where a seller moves one somewhere buyers
+							will actually find it.
+						-->
+						<Field
+							id="category"
+							label="Category"
+							hint="How buyers find it when they filter Discover."
+							error={form?.errors?.category}
+						>
+							{#snippet children({ id, describedBy, invalid })}
+								<select
+									{id}
+									name="category"
+									required
+									aria-describedby={describedBy}
+									aria-invalid={invalid}
+								>
+									{#each data.categories as value (value)}
+										<option {value} selected={data.listing.category === value}>
+											{CATEGORY_LABELS[value]}
+										</option>
+									{/each}
+								</select>
+							{/snippet}
+						</Field>
+
 						<Field id="description" label="Description">
 							{#snippet children({ id, describedBy, invalid })}
 								<textarea
@@ -252,7 +297,14 @@
 	<aside class="side">
 		<Panel>
 			<p class="price">{formatPrice(data.listing.price_cents)}</p>
-			<p class="condition">{CONDITION_LABELS[data.listing.condition]}</p>
+			<p class="condition">
+				{CONDITION_LABELS[data.listing.condition]}
+				<!--
+					A link, not plain text: a buyer looking at one bicycle usually
+					wants to see the others.
+				-->
+				· <a href="/discover?category={data.listing.category}">{CATEGORY_LABELS[data.listing.category]}</a>
+			</p>
 
 			<dl class="seller">
 				<dt>Seller</dt>
@@ -364,6 +416,12 @@
 </div>
 
 <style>
+	.photo-count {
+		margin-bottom: var(--k-space-3);
+		color: var(--k-text-muted);
+		font-size: var(--k-text-sm);
+	}
+
 	.banner {
 		margin-bottom: var(--k-space-4);
 	}

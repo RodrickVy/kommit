@@ -1,4 +1,9 @@
-import { CONDITION_ORDER, type ListingCondition } from '#lib/listings/labels';
+import {
+	CATEGORY_ORDER,
+	CONDITION_ORDER,
+	type ListingCategory,
+	type ListingCondition
+} from '#lib/listings/labels';
 import { DISCOVER_SORTS, MAX_QUERY_LENGTH, type DiscoverSort } from '#lib/listings/discover-view';
 import type { PageServerLoad } from './$types';
 
@@ -45,18 +50,28 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	const condition = (CONDITION_ORDER as readonly string[]).includes(conditionParam)
 		? (conditionParam as ListingCondition)
 		: 'all';
+	/**
+	 * Narrowed against the real enum, so a mangled query parameter shows
+	 * everything rather than failing the query.
+	 */
+	const categoryParam = url.searchParams.get('category') ?? 'all';
+	const category = (CATEGORY_ORDER as readonly string[]).includes(categoryParam)
+		? (categoryParam as ListingCategory)
+		: 'all';
+
 	const sortParam = url.searchParams.get('sort') ?? 'newest';
 	const sort: DiscoverSort = sortParam in DISCOVER_SORTS ? (sortParam as DiscoverSort) : 'newest';
 
 	let query = locals.supabase
 		.from('listings')
-		.select('id, title, price_cents, condition, status, listing_images(storage_path)', {
+		.select('id, title, price_cents, condition, category, status, listing_images(storage_path)', {
 			count: 'exact'
 		})
 		.eq('status', 'active')
 		.eq('listing_images.position', 0);
 
 	if (condition !== 'all') query = query.eq('condition', condition);
+	if (category !== 'all') query = query.eq('category', category);
 
 	if (q) {
 		/**
@@ -75,7 +90,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		.order('created_at', { ascending: false })
 		.range(from, to);
 
-	const view = { q, condition, sort };
+	const view = { q, condition, category, sort };
 
 	if (error) {
 		return { listings: [], page, pageCount: 1, total: 0, view, loadError: 'Listings could not be loaded.' };

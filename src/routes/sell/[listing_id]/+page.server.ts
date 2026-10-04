@@ -3,7 +3,13 @@ import { error, fail, redirect } from '@sveltejs/kit';
 import { parsePriceToCents } from '#lib/format';
 import { requireUser } from '#lib/server/auth/guards';
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from '#lib/listings/images';
-import { CONDITION_ORDER, type ListingCondition } from '#lib/listings/labels';
+import {
+	CATEGORY_ORDER,
+	CONDITION_ORDER,
+	MAX_LISTING_IMAGES,
+	type ListingCategory,
+	type ListingCondition
+} from '#lib/listings/labels';
 import { invokeFunction } from '#lib/server/functions/invoke';
 import { loadRequestOptions } from '#lib/server/request-options';
 import {
@@ -46,7 +52,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	const { data: listing, error: listingError } = await locals.supabase
 		.from('listings')
 		.select(
-			'id, seller_id, title, description, price_cents, condition, status, created_at, profiles(display_name, reputation)'
+			'id, seller_id, title, description, price_cents, condition, category, status, created_at, profiles(display_name, reputation)'
 		)
 		.eq('id', params.listing_id)
 		.maybeSingle();
@@ -106,6 +112,8 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		availability,
 		isOwner,
 		conditions: CONDITION_ORDER,
+		categories: CATEGORY_ORDER,
+		maxImages: MAX_LISTING_IMAGES,
 		slots,
 		stakeCents,
 		fee,
@@ -243,6 +251,7 @@ export const actions: Actions = {
 		const description = String(form.get('description') ?? '').trim();
 		const priceInput = String(form.get('price') ?? '').trim();
 		const condition = String(form.get('condition') ?? '');
+		const category = String(form.get('category') ?? '');
 
 		const errors: Record<string, string> = {};
 		const priceCents = parsePriceToCents(priceInput);
@@ -255,7 +264,22 @@ export const actions: Actions = {
 
 		if (!isValidCondition(condition)) errors.condition = 'Choose the condition.';
 
-		if (Object.keys(errors).length > 0 || priceCents === null || !isValidCondition(condition)) {
+		/**
+		 * Every listing created before categories existed defaulted to `other`.
+		 * This form is how a seller recategorises one, so the field is
+		 * required here exactly as it is on creation.
+		 */
+		const isValidCategory = (value: string): value is ListingCategory =>
+			(CATEGORY_ORDER as readonly string[]).includes(value);
+
+		if (!isValidCategory(category)) errors.category = 'Choose a category.';
+
+		if (
+			Object.keys(errors).length > 0 ||
+			priceCents === null ||
+			!isValidCondition(condition) ||
+			!isValidCategory(category)
+		) {
 			return fail(400, { errors, message: null, tone: 'error' as const });
 		}
 
@@ -265,7 +289,8 @@ export const actions: Actions = {
 				title,
 				description: description.length > 0 ? description : null,
 				price_cents: priceCents,
-				condition
+				condition,
+				category
 			})
 			.eq('id', params.listing_id);
 
@@ -315,6 +340,26 @@ export const actions: Actions = {
 		}
 
 		/**
+		 * Checked BEFORE the upload, so a rejected photograph never reaches
+		 * storage and has to be cleaned up afterwards.
+		 *
+		 * A trigger in the database enforces the same limit, and that one is
+		 * the real guarantee: this count and the insert below are separate
+		 * statements, so two uploads arriving together could both read four
+		 * and both proceed. The trigger is what makes the sixth fail.
+		 */
+		const { count: imageCount } = await locals.supabase
+			.from('listing_images')
+			.select('id', { count: 'exact', head: true })
+			.eq('listing_id', params.listing_id);
+
+		if ((imageCount ?? 0) >= MAX_LISTING_IMAGES) {
+			return fail(409, {
+				uploadError: `A listing can have at most ${MAX_LISTING_IMAGES} photographs. Remove one to add another.`
+			});
+		}
+
+		/**
 		 * Path layout is `{seller_id}/{listing_id}/{random}.{ext}`. The first
 		 * segment being the owner's id is exactly what the storage policy
 		 * checks, so a user cannot write into another seller's folder.
@@ -357,7 +402,18 @@ export const actions: Actions = {
 			 * Remove it rather than leaving it behind.
 			 */
 			await locals.supabase.storage.from(PUBLIC_SUPABASE_LISTINGS_BUCKET).remove([storagePath]);
-			return fail(500, { uploadError: `${file.name} was uploaded but could not be attached.` });
+
+			/**
+			 * The limit trigger raises a check violation, which is a rule rather
+			 * than a fault — said plainly instead of as a generic failure.
+			 */
+			const atLimit = insertError.message.includes('at most');
+
+			return fail(atLimit ? 409 : 500, {
+				uploadError: atLimit
+					? `A listing can have at most ${MAX_LISTING_IMAGES} photographs. Remove one to add another.`
+					: `${file.name} was uploaded but could not be attached.`
+			});
 		}
 
 		return { uploadError: null };

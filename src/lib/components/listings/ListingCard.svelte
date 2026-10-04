@@ -108,17 +108,25 @@
 		background-color: var(--k-surface-raised);
 	}
 
+	/* One ratio for every card, whatever shape the photograph is, so a row of
+	   cards lines up and the text below each starts at the same height. */
 	.media {
+		display: grid;
+		place-items: center;
 		aspect-ratio: 4 / 3;
+		overflow: hidden;
 		background-color: var(--k-surface-sunken);
 	}
 
 	.media img {
 		width: 100%;
 		height: 100%;
-		/* Fill the frame without distorting. Every card then has the same
-		   geometry whatever shape the photograph is. */
-		object-fit: cover;
+		/* `contain`, not `cover`: the whole item is visible rather than having
+		   its edges cropped to fill the frame. A tall photograph of a bike is
+		   letterboxed instead of being reduced to its middle third, which is
+		   what a buyer scanning a grid actually needs to see. The frame keeps
+		   its ratio either way, so the cards stay uniform. */
+		object-fit: contain;
 	}
 
 	.media-empty {
@@ -131,6 +139,10 @@
 
 	.body {
 		display: grid;
+		/* The middle row takes the slack, which pins `meta` to the bottom of
+		   every card regardless of how tall the title ran. */
+		grid-template-rows: auto 1fr auto;
+		flex: 1;
 		gap: var(--k-space-2);
 		padding: var(--k-space-4);
 	}
@@ -138,6 +150,7 @@
 	.title {
 		font-size: var(--k-text-base);
 		font-weight: 600;
+		line-height: 1.35;
 		/* Two lines, then ellipsis, long titles must not change card height. */
 		display: -webkit-box;
 		-webkit-box-orient: vertical;
@@ -146,6 +159,10 @@
 		   support it use this; older WebKit falls back to the prefix. */
 		line-clamp: 2;
 		overflow: hidden;
+		/* ALWAYS two lines tall, even for a one-line title. Clamping only caps
+		   the maximum; without a floor a short title and a long one give the
+		   two cards different heights and the prices stop lining up. */
+		min-height: calc(2 * 1.35em);
 	}
 
 	.price {
