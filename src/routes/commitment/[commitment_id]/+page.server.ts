@@ -1,6 +1,7 @@
 import { error, fail } from '@sveltejs/kit';
 import { requireUser } from '#lib/server/auth/guards';
 import { invokeFunction } from '#lib/server/functions/invoke';
+import { publicOrigin } from '#lib/config/site';
 import { renderQrSvg } from '#lib/server/qr';
 import type { Database } from '#lib/supabase/database.types';
 import type { Actions, PageServerLoad } from './$types';
@@ -208,10 +209,11 @@ interface IssuedQr {
 /**
  * Issues a QR and renders it, for whichever of the two codes is asked for.
  *
- * THE ABSOLUTE URL IS BUILT HERE, from the request's own origin. The function
- * returns a relative path deliberately: a URL hardcoded in the Edge Function
- * would point a preview deployment's QR at production, and someone would scan
- * it before anyone noticed.
+ * THE ABSOLUTE URL IS BUILT HERE. The function returns a relative path, and
+ * the origin is always the real site (https://kommitly.tech) rather than
+ * whichever deployment the page was opened on, so a scanned code never lands
+ * on a Vercel address. Local development keeps its own origin; see
+ * `#lib/config/site`.
  */
 async function issueQr(
 	locals: App.Locals,
@@ -414,7 +416,7 @@ export const actions: Actions = {
 			'create_commitment_qr',
 			'meetup_verification',
 			params.commitment_id,
-			url.origin
+			publicOrigin(url)
 		);
 	},
 
@@ -432,7 +434,7 @@ export const actions: Actions = {
 			'create_payment_qr',
 			'purchase',
 			params.commitment_id,
-			url.origin
+			publicOrigin(url)
 		);
 	}
 };

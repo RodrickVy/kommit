@@ -3,6 +3,7 @@ import { fail, redirect } from '@sveltejs/kit';
 import { safeRedirectTarget } from '#lib/server/auth/guards';
 import { invokeFunction, type CreatedWallet } from '#lib/server/functions/invoke';
 import type { Actions, PageServerLoad } from './$types';
+import { publicOrigin } from '#lib/config/site';
 
 /**
  * Join, create an account.
@@ -121,15 +122,14 @@ export const actions: Actions = {
 				 * page instead would deliver the visitor back to the site still
 				 * signed out, holding parameters nothing reads.
 				 *
-				 * Built from the REQUEST ORIGIN rather than a configured value,
-				 * so the link is correct in local development, on each preview
-				 * deployment and in production without three separate settings,
-				 * and so a preview never emails someone a production link.
+				 * Always the real site (https://kommitly.tech), whichever
+				 * deployment handled the sign-up, so nobody is emailed a Vercel
+				 * address. Local development keeps its own origin.
 				 *
 				 * The origin must appear in the project's allowed redirect URLs
 				 * or Supabase ignores it and falls back to `site_url`.
 				 */
-				emailRedirectTo: `${url.origin}/auth/callback`
+				emailRedirectTo: `${publicOrigin(url)}/auth/callback`
 			}
 		});
 

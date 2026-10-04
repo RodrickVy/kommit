@@ -382,7 +382,7 @@ Set in `supabase/config.toml` and applied with `supabase config push`:
 | Setting | Value |
 | --- | --- |
 | Site URL | `https://kommitly.tech` |
-| Redirect URLs | `kommitly.tech`, `www.kommitly.tech`, `kommit-delta.vercel.app`, `kommit-*.vercel.app`, `localhost:5173` |
+| Redirect URLs | `kommitly.tech`, `www.kommitly.tech`, `kommit-*.vercel.app`, `localhost:5173` |
 
 Site URL is the domain we own, deliberately — never a Vercel or localhost
 address. It is the fallback used whenever a requested redirect is not

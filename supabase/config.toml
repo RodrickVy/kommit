@@ -199,9 +199,9 @@ enabled = true
 # localhost fallback would hand every production user a dead link, and a
 # *.vercel.app fallback would send them to a deployment URL that changes.
 #
-# The app passes an explicit `emailRedirectTo` built from the request origin,
-# so each environment normally produces its own correct link and this value is
-# only reached when something has gone wrong. Making the wrong-case land on
+# The app always passes an explicit `emailRedirectTo` on https://kommitly.tech
+# (localhost during development), so this value is only reached when something
+# has gone wrong. Making the wrong-case land on
 # the real site is the whole point.
 site_url = "https://kommitly.tech"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
@@ -225,7 +225,6 @@ site_url = "https://kommitly.tech"
 additional_redirect_urls = [
   "https://kommitly.tech/**",
   "https://www.kommitly.tech/**",
-  "https://kommit-delta.vercel.app/**",
   "https://kommit-*.vercel.app/**",
   "http://localhost:5173/**"
 ]
