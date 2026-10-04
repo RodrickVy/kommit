@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { CommitmentFee } from '#lib/commitments/fee';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import Alert from '#lib/components/ui/Alert.svelte';
@@ -22,13 +23,11 @@
 		hasAvailability: boolean;
 		slots: { startsAt: string }[];
 		stakeCents: number | null;
-		/** How the fee was reached: base, the buyer's reputation, the market's. */
-		fee?: {
-			baseFeeCents: number;
-			reputation: number;
-			marketReputation: number;
-			feeCents: number;
-		} | null;
+		/**
+		 * How the fee was reached: the base, what market reputation did to it,
+		 * and what the buyer's own record did to that. See `#lib/commitments/fee`.
+		 */
+		fee?: CommitmentFee | null;
 		minimumLeadHours: number | null;
 	}
 
@@ -197,8 +196,10 @@
 
 		{#if fee}
 			<!--
-				The fee, and how it was reached. A more reliable record than the
-				market average pays less than the base; a less reliable one, more.
+				EVERY STEP, not just the total. This is the moment money is
+				committed, so the base, what the market did to it and what the
+				buyer's own record did to that are all shown. A single figure would
+				be easier to lay out and impossible to question.
 			-->
 			<dl class="fee">
 				<div class="fee-row">
@@ -206,10 +207,34 @@
 					<dd>{formatPrice(fee.baseFeeCents)}</dd>
 				</div>
 				<div class="fee-row">
+					<dt>Market reputation</dt>
+					<dd>
+						<span class="fee-delta" data-direction={fee.marketAdjustment > 0 ? 'up' : 'down'}>
+							{fee.marketAdjustment > 0 ? '+' : '−'}{Math.abs(
+								fee.marketAdjustment * 100
+							).toFixed(2)}%
+						</span>
+						<span class="fee-hint">average {fee.marketReputation.toFixed(3)}</span>
+					</dd>
+				</div>
+				<div class="fee-row fee-subtotal">
+					<dt>An average member puts down</dt>
+					<dd>{formatPrice(fee.adjustedBaseFeeCents)}</dd>
+				</div>
+				<div class="fee-row">
 					<dt>Your reputation</dt>
 					<dd>
 						{fee.reputation.toFixed(3)}
-						<span class="fee-hint">market average {fee.marketReputation.toFixed(3)}</span>
+						{#if fee.adjustedBaseFeeCents !== fee.feeCents}
+							<span
+								class="fee-delta"
+								data-direction={fee.feeCents < fee.adjustedBaseFeeCents ? 'down' : 'up'}
+							>
+								{fee.feeCents < fee.adjustedBaseFeeCents ? '−' : '+'}{formatPrice(
+									Math.abs(fee.adjustedBaseFeeCents - fee.feeCents)
+								)}
+							</span>
+						{/if}
 					</dd>
 				</div>
 				<div class="fee-row fee-total">
@@ -290,6 +315,29 @@
 		display: block;
 		color: var(--k-text-subtle);
 		font-size: var(--k-text-xs);
+	}
+
+	/* A quieter rule than the total: this is a running subtotal, not the
+	   figure being committed to. */
+	.fee-subtotal {
+		padding-top: var(--k-space-2);
+		border-top: var(--k-line-width) dashed var(--k-line);
+		font-weight: 600;
+	}
+
+	/* Direction is in the sign as well as the colour, so it survives for
+	   anyone who cannot tell the two apart. */
+	.fee-delta {
+		font-variant-numeric: tabular-nums;
+		font-weight: 600;
+	}
+
+	.fee-delta[data-direction='up'] {
+		color: var(--k-danger);
+	}
+
+	.fee-delta[data-direction='down'] {
+		color: var(--k-primary);
 	}
 
 	.fee-total {

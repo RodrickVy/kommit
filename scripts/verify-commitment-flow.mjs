@@ -410,8 +410,15 @@ try {
 
 	await rest(`commitments?id=eq.${ignored.id}`, { method: 'DELETE' });
 
-	/** Seller turned up, buyer did not, and the window has closed. */
-	const noShowSlot = new Date(Date.now() - 4 * 3600_000).toISOString();
+	/**
+	 * Seller turned up, buyer did not, and the meetup DAY has ended.
+	 *
+	 * Dated 30 hours back rather than a few hours, because check-in is open
+	 * for the whole of the meetup's calendar day and no verdict exists until
+	 * that day is over. A fixture set earlier today is still live, and the
+	 * resolver is right to leave it alone.
+	 */
+	const noShowSlot = new Date(Date.now() - 30 * 3600_000).toISOString();
 
 	const noShow = await insertCommitment({
 		listing_id: listing.id,
@@ -425,7 +432,12 @@ try {
 		seller_stake_lamports: 40000,
 		status: 'accepted',
 		seller_checked_in_at: noShowSlot,
-		check_in_window_ends_at: new Date(Date.now() - 3 * 3600_000).toISOString()
+		/**
+		 * Recorded as `check_in` would record it, but no longer consulted by the
+		 * verdict: the deadline is the end of the day, which the date above
+		 * already puts in the past.
+		 */
+		check_in_window_ends_at: new Date(Date.now() - 24 * 3600_000).toISOString()
 	});
 
 	const noShowRun = await call('process_commitments', service);
@@ -437,8 +449,8 @@ try {
 
 	await rest(`commitments?id=eq.${noShow.id}`, { method: 'DELETE' });
 
-	/** Neither turned up: nobody can fairly be blamed. */
-	const staleSlot = new Date(Date.now() - 4 * 3600_000).toISOString();
+	/** Neither turned up, and the day is over: nobody can fairly be blamed. */
+	const staleSlot = new Date(Date.now() - 30 * 3600_000).toISOString();
 
 	const stale = await insertCommitment({
 		listing_id: listing.id,

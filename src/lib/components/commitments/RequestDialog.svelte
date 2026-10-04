@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Button from '#lib/components/ui/Button.svelte';
 	import RequestPanel from '#lib/components/commitments/RequestPanel.svelte';
+	import type { CommitmentFee } from '#lib/commitments/fee';
 
 	/**
 	 * RequestDialog, request a meetup straight from a Discover card.
@@ -23,12 +24,7 @@
 		hasAvailability: boolean;
 		slots: { startsAt: string }[];
 		stakeCents: number | null;
-		fee: {
-			baseFeeCents: number;
-			reputation: number;
-			marketReputation: number;
-			feeCents: number;
-		} | null;
+		fee: CommitmentFee | null;
 		minimumLeadHours: number | null;
 	};
 

@@ -41,7 +41,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 		locals.supabase
 			.from('profiles')
 			.select(
-				'display_name, description, reputation, commitments_total, commitments_successful, email_receipts_enabled'
+				'display_name, description, reputation, commitments_total, commitments_successful, commitments_cancelled, commitment_checkins, commitments_ignored, commitments_expired, commitments_stale, email_receipts_enabled'
 			)
 			.eq('id', user.id)
 			.single(),
@@ -69,11 +69,30 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 	 */
 	const { wallet, error: walletError } = await loadWallet(locals.supabase);
 
+	/**
+	 * Every number behind the reputation score, so the page can show its
+	 * working rather than asserting a figure.
+	 *
+	 * Computed in the database by `my_reputation_breakdown()`, from the same
+	 * row and the same weights the stored score came from. Recomputing the
+	 * arithmetic here would be a second implementation of the formula, and the
+	 * moment the two disagreed the version shown to the user would be the wrong
+	 * one.
+	 *
+	 * `maybeSingle` because the function returns a table: one row for a real
+	 * profile, none if something is badly wrong. A null breakdown degrades to
+	 * showing the score without its derivation, rather than failing the page.
+	 */
+	const { data: breakdown } = await locals.supabase
+		.rpc('my_reputation_breakdown')
+		.maybeSingle();
+
 	return {
 		user,
 		wallet,
 		walletError: walletError?.message ?? null,
 		profile: profileResult.data,
+		breakdown,
 		locations: locationsResult.data ?? [],
 		availability: availabilityResult.data ?? [],
 		/**

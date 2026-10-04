@@ -8,7 +8,7 @@ import type { PageServerLoad } from './$types';
  */
 
 export const load: PageServerLoad = async ({ locals }) => {
-	const [historyResult, settingsResult, outcomesResult] = await Promise.all([
+	const [historyResult, settingsResult, outcomesResult, marketResult] = await Promise.all([
 		locals.supabase.rpc('base_fee_history'),
 		locals.supabase
 			.from('market_settings')
@@ -16,7 +16,13 @@ export const load: PageServerLoad = async ({ locals }) => {
 			.eq('id', 1)
 			.maybeSingle(),
 		/** Totals per status only; no commitment or person is identifiable. */
-		locals.supabase.rpc('commitment_outcome_counts')
+		locals.supabase.rpc('commitment_outcome_counts'),
+		/**
+		 * The headline pair: the market's average reputation, and what it has
+		 * done to the base fee. Both are marketplace-wide aggregates and name
+		 * nobody, which is why this page can be public.
+		 */
+		locals.supabase.rpc('market_fee_summary').maybeSingle()
 	]);
 
 	/**
@@ -93,6 +99,7 @@ export const load: PageServerLoad = async ({ locals }) => {
 		outcomes,
 		currentCents: settingsResult.data?.base_commitment_fee_cents ?? null,
 		currencyCode: settingsResult.data?.currency_code ?? 'CAD',
+		market: marketResult.data,
 		loadError: historyResult.error ? 'The fee history could not be loaded.' : null
 	};
 };

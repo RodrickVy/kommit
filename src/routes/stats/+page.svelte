@@ -26,6 +26,13 @@
 	);
 	const high = $derived(data.points.length ? Math.max(...data.points.map((p) => p.cents)) : null);
 	const low = $derived(data.points.length ? Math.min(...data.points.map((p) => p.cents)) : null);
+
+	/**
+	 * How far market reputation has moved the base fee, as a fraction.
+	 * Positive means dearer. Computed in the database by
+	 * `market_fee_adjustment()` and only read here.
+	 */
+	const marketAdjustment = $derived(Number(data.market?.market_adjustment ?? 0));
 </script>
 
 <svelte:head>
@@ -34,8 +41,52 @@
 
 <PageHeader
 	title="Stats"
-	description="How the base commitment fee has moved. Your own fee is this base, adjusted by your reputation."
+	description="What the marketplace currently costs, and why. Your own stake is this base, adjusted by your reputation."
 />
+
+{#if data.market}
+	<!--
+		The two headline figures, side by side, because one explains the other:
+		the market's average reliability is the reason the base fee is where it
+		is. Shown above the chart so the current state is readable before
+		anyone interprets a trend.
+	-->
+	<div class="headline">
+		<Panel tone="raised">
+			<span class="headline-label">Market reputation</span>
+			<span class="headline-value">{Number(data.market.market_reputation).toFixed(3)}</span>
+			<p class="headline-note">
+				The average across {data.market.scored_profiles}
+				{data.market.scored_profiles === 1 ? 'member' : 'members'}.
+				<strong>1.000</strong> is neutral
+				{#if marketAdjustment > 0}
+					&mdash; below it, so stakes are raised.
+				{:else if marketAdjustment < 0}
+					&mdash; above it, so stakes are reduced.
+				{:else}
+					&mdash; exactly where the market is, so the base fee is unchanged.
+				{/if}
+			</p>
+		</Panel>
+
+		<Panel tone="raised">
+			<span class="headline-label">Commitment fee now</span>
+			<span class="headline-value">{money(Number(data.market.adjusted_base_fee_cents))}</span>
+			<p class="headline-note">
+				{money(Number(data.market.base_fee_cents))} base
+				{#if marketAdjustment !== 0}
+					<span class="delta" data-direction={marketAdjustment > 0 ? 'up' : 'down'}>
+						{marketAdjustment > 0 ? '+' : '&minus;'}{Math.abs(marketAdjustment * 100).toFixed(2)}%
+					</span>
+					from market reputation.
+				{:else}
+					with no market adjustment.
+				{/if}
+				What a member of exactly average reliability puts down.
+			</p>
+		</Panel>
+	</div>
+{/if}
 
 {#if data.loadError}
 	<Alert tone="error">{data.loadError}</Alert>
@@ -101,6 +152,55 @@
 {/if}
 
 <style>
+	/* Two headline figures, stacking on a phone. They answer "what does this
+	   cost right now, and why" before the chart asks anyone to read a trend. */
+	.headline {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: var(--k-space-3);
+		margin-bottom: var(--k-space-4);
+	}
+
+	@media (min-width: 40rem) {
+		.headline {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
+	.headline-label {
+		display: block;
+		color: var(--k-text-subtle);
+		font-size: var(--k-text-xs);
+		text-transform: uppercase;
+		letter-spacing: var(--k-tracking-wide);
+	}
+
+	.headline-value {
+		display: block;
+		margin-top: var(--k-space-1);
+		font-size: var(--k-text-2xl);
+		font-weight: 700;
+		font-variant-numeric: tabular-nums;
+		line-height: 1;
+	}
+
+	.headline-note {
+		margin-top: var(--k-space-3);
+		color: var(--k-text-muted);
+		font-size: var(--k-text-sm);
+	}
+
+	/* Direction is carried by the sign in the text as well as the colour. */
+	.delta[data-direction='up'] {
+		color: var(--k-danger);
+		font-weight: 600;
+	}
+
+	.delta[data-direction='down'] {
+		color: var(--k-primary);
+		font-weight: 600;
+	}
+
 	.charts {
 		display: grid;
 		gap: var(--k-space-4);

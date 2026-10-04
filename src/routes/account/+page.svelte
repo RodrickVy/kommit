@@ -1,4 +1,5 @@
 <script lang="ts">
+	import ReputationBreakdown from '#lib/components/reputation/ReputationBreakdown.svelte';
 	import Alert from '#lib/components/ui/Alert.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
@@ -70,19 +71,23 @@
 
 		<Panel>
 			<h2 class="panel-title">Commitment record</h2>
-			<dl class="pairs">
-				<div class="pair">
-					<dt>Reputation</dt>
-					<dd>
-						{#if data.profile?.reputation == null}
-							<!-- Null means not yet calculated, deliberately distinguishable
-							     from a genuine low score. -->
-							<span class="muted">Not calculated yet</span>
-						{:else}
-							{Number(data.profile.reputation).toFixed(3)}
-						{/if}
-					</dd>
-				</div>
+
+			<div class="pair reputation">
+				<dt>Reputation</dt>
+				<dd>
+					<!--
+						The score and, behind the info control, every number that
+						produced it. A figure that decides what someone pays should be
+						explainable on the spot rather than taken on trust.
+					-->
+					<ReputationBreakdown
+						breakdown={data.breakdown}
+						reputation={data.profile?.reputation ?? null}
+					/>
+				</dd>
+			</div>
+
+			<dl class="pairs counters">
 				<div class="pair">
 					<dt>Commitments</dt>
 					<dd>{data.profile?.commitments_total ?? 0}</dd>
@@ -91,7 +96,42 @@
 					<dt>Successful</dt>
 					<dd>{data.profile?.commitments_successful ?? 0}</dd>
 				</div>
+				<div class="pair">
+					<dt>Check-ins</dt>
+					<dd>{data.profile?.commitment_checkins ?? 0}</dd>
+				</div>
+				<div class="pair">
+					<!--
+						One counter, two ways of breaking a commitment. Cancelling and
+						not turning up are the same thing from the other person's side,
+						so they cost the same.
+					-->
+					<dt>Cancelled or missed</dt>
+					<dd>{data.profile?.commitments_cancelled ?? 0}</dd>
+				</div>
+				<div class="pair">
+					<dt>Requests you ignored</dt>
+					<dd>{data.profile?.commitments_ignored ?? 0}</dd>
+				</div>
+				<div class="pair">
+					<dt>Your requests that expired</dt>
+					<dd>{data.profile?.commitments_expired ?? 0}</dd>
+				</div>
+				<div class="pair">
+					<dt>Unresolved</dt>
+					<dd>{data.profile?.commitments_stale ?? 0}</dd>
+				</div>
 			</dl>
+
+			<!--
+				Stated here as well as inside the breakdown, because this list is
+				where someone will notice a figure that their score did not move for.
+			-->
+			<p class="counters-note">
+				Of these, only successful meetups, commitments you cancelled or failed
+				to attend, and your check-ins affect your reputation. The rest are
+				recorded as part of your record.
+			</p>
 		</Panel>
 	</div>
 
@@ -176,5 +216,37 @@
 		margin-top: var(--k-space-6);
 		padding-top: var(--k-space-5);
 		border-top: var(--k-line-width) solid var(--k-line);
+	}
+	.reputation {
+		margin-bottom: var(--k-space-4);
+		padding-bottom: var(--k-space-4);
+		border-bottom: var(--k-line-width) solid var(--k-line);
+	}
+
+	.reputation dt {
+		color: var(--k-text-subtle);
+		font-size: var(--k-text-xs);
+		text-transform: uppercase;
+		letter-spacing: var(--k-tracking-wide);
+	}
+
+	.reputation dd {
+		margin: var(--k-space-1) 0 0;
+		font-size: var(--k-text-2xl);
+		font-weight: 600;
+	}
+
+	/* Two columns from the point there is room, because eight single-line
+	   figures in one column reads as a much longer list than it is. */
+	.counters {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	.counters-note {
+		margin-top: var(--k-space-4);
+		padding-top: var(--k-space-3);
+		border-top: var(--k-line-width) solid var(--k-line);
+		color: var(--k-text-subtle);
+		font-size: var(--k-text-xs);
 	}
 </style>

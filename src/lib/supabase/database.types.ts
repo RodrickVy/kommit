@@ -486,6 +486,7 @@ export type Database = {
           id: number
           market_reputation: number | null
           market_reputation_params: Json
+          market_reputation_weight: number
           max_commitment_fee_cents: number
           min_commitment_fee_cents: number
           minimum_acceptance_lead_hours: number
@@ -509,6 +510,7 @@ export type Database = {
           id?: number
           market_reputation?: number | null
           market_reputation_params?: Json
+          market_reputation_weight?: number
           max_commitment_fee_cents: number
           min_commitment_fee_cents: number
           minimum_acceptance_lead_hours: number
@@ -532,6 +534,7 @@ export type Database = {
           id?: number
           market_reputation?: number | null
           market_reputation_params?: Json
+          market_reputation_weight?: number
           max_commitment_fee_cents?: number
           min_commitment_fee_cents?: number
           minimum_acceptance_lead_hours?: number
@@ -1057,6 +1060,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      adjusted_base_fee_cents: { Args: never; Returns: number }
       apply_charity_vote_result: { Args: never; Returns: string }
       base_fee_history: {
         Args: never
@@ -1089,19 +1093,70 @@ export type Database = {
         Returns: boolean
       }
       listing_is_held: { Args: { target_listing: string }; Returns: boolean }
+      market_fee_adjustment: { Args: never; Returns: number }
+      market_fee_summary: {
+        Args: never
+        Returns: {
+          adjusted_base_fee_cents: number
+          base_fee_cents: number
+          market_adjustment: number
+          market_reputation: number
+          market_reputation_weight: number
+          max_fee_cents: number
+          min_fee_cents: number
+          scored_profiles: number
+        }[]
+      }
       my_commitment_fee: {
         Args: never
         Returns: {
+          adjusted_base_fee_cents: number
           base_fee_cents: number
           fee_cents: number
+          market_adjustment: number
           market_reputation: number
+          market_reputation_weight: number
+          max_fee_cents: number
+          min_fee_cents: number
           reputation: number
+        }[]
+      }
+      my_reputation_breakdown: {
+        Args: never
+        Returns: {
+          adjusted_base_fee_cents: number
+          base_fee_cents: number
+          cancel_points: number
+          cancel_rate: number
+          cancelled: number
+          checkin_points: number
+          checkin_rate: number
+          checkin_weight: number
+          checkins: number
+          fee_cents: number
+          market_adjustment: number
+          market_reputation: number
+          market_reputation_weight: number
+          max_fee_cents: number
+          min_fee_cents: number
+          outcome_weight: number
+          reputation: number
+          reputation_updated_at: string
+          success_points: number
+          success_rate: number
+          successful: number
+          total: number
         }[]
       }
       refresh_market_reputation: { Args: never; Returns: number }
       release_purchase_holds: { Args: never; Returns: number }
       reputation_score: {
-        Args: { cancelled: number; checkins: number; successful: number }
+        Args: {
+          cancelled: number
+          checkins: number
+          successful: number
+          total: number
+        }
         Returns: number
       }
     }

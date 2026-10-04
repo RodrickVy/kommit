@@ -1,3 +1,4 @@
+import type { CommitmentFee } from '#lib/commitments/fee';
 import { generateSlots, type Slot } from '#lib/commitments/slots';
 
 /**
@@ -22,13 +23,6 @@ export interface RequestOptions {
 	/** How that figure was reached, shown beside it. */
 	fee: CommitmentFee | null;
 	minimumLeadHours: number | null;
-}
-
-export interface CommitmentFee {
-	baseFeeCents: number;
-	reputation: number;
-	marketReputation: number;
-	feeCents: number;
 }
 
 /**
@@ -84,7 +78,11 @@ export async function loadRequestOptions(
 			.eq('seller_id', sellerId)
 			.eq('status', 'accepted'),
 		/**
-		 * The viewer's own fee: base fee scaled by their reputation against the
+		 * The viewer's own fee, with every step: the base, what market
+		 * reputation did to it, and what their own reputation did to that.
+		 * A buyer about to put money down is entitled to see all of it.
+		 *
+		 * Previously: base fee scaled by their reputation against the
 		 * market's. Calculated in the database, the same function the request
 		 * itself uses, so what is shown is what is charged.
 		 */
@@ -97,6 +95,9 @@ export async function loadRequestOptions(
 				baseFeeCents: Number(feeRow.base_fee_cents),
 				reputation: Number(feeRow.reputation),
 				marketReputation: Number(feeRow.market_reputation),
+				marketReputationWeight: Number(feeRow.market_reputation_weight),
+				marketAdjustment: Number(feeRow.market_adjustment),
+				adjustedBaseFeeCents: Number(feeRow.adjusted_base_fee_cents),
 				feeCents: Number(feeRow.fee_cents)
 			}
 		: null;
