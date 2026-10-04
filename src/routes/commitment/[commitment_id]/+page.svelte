@@ -46,6 +46,16 @@
 		}).format(new Date(iso));
 	}
 
+	/** The meetup's calendar day, in the marketplace's zone, as check-in uses. */
+	function meetupDate(iso: string): string {
+		return new Intl.DateTimeFormat('en-CA', {
+			weekday: 'long',
+			month: 'long',
+			day: 'numeric',
+			timeZone: 'America/Vancouver'
+		}).format(new Date(iso));
+	}
+
 	function time(iso: string): string {
 		return new Intl.DateTimeFormat('en-CA', { hour: 'numeric', minute: '2-digit' }).format(
 			new Date(iso)
@@ -187,14 +197,19 @@
 					</li>
 				</ul>
 
-				{#if c.check_in_window_ends_at && !bothCheckedIn}
+				{#if !bothCheckedIn}
+					<!--
+						Check-in, verification and payment are all open for the whole
+						meetup day. Not arriving by the end of that day is a no-show.
+					-->
 					<p class="deadline">
 						{#if iCheckedIn}
-							They have until {time(c.check_in_window_ends_at)} to check in. After
-							that this is recorded as their no-show and your stake comes back.
+							They have until the end of {meetupDate(c.scheduled_at)} to check in. If
+							they do not, it is recorded as their no-show and your stake comes back.
 						{:else}
-							You have until {time(c.check_in_window_ends_at)}. Miss it and this is
-							recorded as your no-show, which forfeits your stake.
+							Check in any time on {meetupDate(c.scheduled_at)}, at the agreed place.
+							Not checking in that day is recorded as your no-show, which forfeits
+							your stake.
 						{/if}
 					</p>
 				{/if}
@@ -350,7 +365,7 @@
 				</h2>
 				<p class="muted">
 					{#if c.responsible_party === (data.isBuyer ? 'buyer' : 'seller')}
-						Nobody checked you in at the agreed location within the window, so
+						You did not check in at the agreed location on the meetup day, so
 						your stake was forfeited to the selected charity and the other
 						person was refunded.
 					{:else}

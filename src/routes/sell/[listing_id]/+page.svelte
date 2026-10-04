@@ -5,6 +5,7 @@
 	import Button from '#lib/components/ui/Button.svelte';
 	import ImageUploader from '#lib/components/listings/ImageUploader.svelte';
 	import MeetupSetup from '#lib/components/listings/MeetupSetup.svelte';
+	import RequestPanel from '#lib/components/commitments/RequestPanel.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import { formatPrice, formatTimeOfDay } from '#lib/format';
@@ -29,7 +30,9 @@
 	let { data, form }: PageProps = $props();
 
 	let saving = $state(false);
-	let requesting = $state(false);
+
+	/** Publishing needs a place and a time; the server and database enforce it too. */
+	const canPublish = $derived(data.locations.length > 0 && data.availability.length > 0);
 
 	const statusTone = $derived(
 		data.listing.status === 'active'
@@ -49,32 +52,6 @@
 	 * Both sides are looking at the same moment; each should see it in the
 	 * clock they actually live by.
 	 */
-	function formatSlotTime(iso: string): string {
-		return new Intl.DateTimeFormat('en-CA', { hour: 'numeric', minute: '2-digit' }).format(
-			new Date(iso)
-		);
-	}
-
-	function formatSlotDay(iso: string): string {
-		return new Intl.DateTimeFormat('en-CA', {
-			weekday: 'long',
-			month: 'short',
-			day: 'numeric'
-		}).format(new Date(iso));
-	}
-
-	/** Slots grouped by the viewer's local day, so the picker reads as a calendar. */
-	const slotDays = $derived.by(() => {
-		const days: { label: string; slots: typeof data.slots }[] = [];
-		for (const slot of data.slots) {
-			const label = formatSlotDay(slot.startsAt);
-			const last = days.at(-1);
-			if (last && last.label === label) last.slots.push(slot);
-			else days.push({ label, slots: [slot] });
-		}
-		return days;
-	});
-
 	/** A dated availability reads as its date; a weekly one as its weekday. */
 	function availabilityDay(slot: (typeof data.availability)[number]): string {
 		if (slot.specific_date) {
@@ -288,99 +265,17 @@
 
 			{#if !data.isOwner}
 				<div class="commit" id="request">
-					{#if data.listing.status !== 'active'}
-						<p class="commit-note">
-							{data.listing.status === 'reserved'
-								? 'Someone already has a meetup booked for this item.'
-								: 'This item is not available right now.'}
-						</p>
-					{:else if !data.signedIn}
-						<Button href="/signin?redirectTo=/sell/{data.listing.id}">Sign in to request</Button>
-						<p class="commit-note">You need an account to commit to a meetup.</p>
-					{:else if data.locations.length === 0 || data.slots.length === 0}
-						<p class="commit-note">
-							This seller has not set up
-							{data.locations.length === 0 ? 'meetup locations' : 'availability'} yet,
-							so there is nothing to request.
-						</p>
-					{:else}
-						{#if form?.requestError}
-							<div class="commit-error">
-								<Alert tone="error">{form.requestError}</Alert>
-								{#if form.needsFunds}
-									<!--
-										Not enough SOL is a problem with an obvious next step,
-										so it is offered rather than left for the buyer to work
-										out. The request itself was not created, so nothing is
-										lost by going to top up and coming back.
-									-->
-									<div class="commit-fund">
-										<Button href="/wallet/fund_wallet" variant="secondary" size="sm">
-											Add funds
-										</Button>
-									</div>
-								{/if}
-							</div>
-						{/if}
-
-						<form
-							method="POST"
-							action="?/requestCommitment"
-							use:enhance={() => {
-								requesting = true;
-								return async ({ update }) => {
-									await update();
-									requesting = false;
-								};
-							}}
-						>
-							<div class="commit-fields">
-								<Field id="meetupLocationId" label="Where">
-									{#snippet children({ id, describedBy, invalid })}
-										<select {id} name="meetupLocationId" required aria-describedby={describedBy} aria-invalid={invalid}>
-											{#each data.locations as location (location.id)}
-												<option value={location.id}>{location.name}</option>
-											{/each}
-										</select>
-									{/snippet}
-								</Field>
-
-								<Field id="scheduledAt" label="When">
-									{#snippet children({ id, describedBy, invalid })}
-										<select {id} name="scheduledAt" required aria-describedby={describedBy} aria-invalid={invalid}>
-											<!--
-												Rendered in the viewer's own timezone. The value is the
-												exact instant, so a buyer in another zone sees their
-												local time while both sides mean the same moment.
-											-->
-											{#each slotDays as day (day.label)}
-												<optgroup label={day.label}>
-													{#each day.slots as slot (slot.startsAt)}
-														<option value={slot.startsAt}>{formatSlotTime(slot.startsAt)}</option>
-													{/each}
-												</optgroup>
-											{/each}
-										</select>
-									{/snippet}
-								</Field>
-							</div>
-
-							<div class="commit-action">
-								<Button type="submit" disabled={requesting}>
-									{requesting ? 'Requesting…' : 'Request a meetup'}
-								</Button>
-							</div>
-						</form>
-
-						{#if data.stakeCents !== null}
-							<p class="commit-note">
-								Requesting puts down a <strong>{formatPrice(data.stakeCents)}</strong>
-								commitment. The seller puts down the same when they accept, and you
-								both get it back when you meet. It is a commitment to <em>meet</em>,
-								not to buy — you can inspect the item and walk away.
-							</p>
-						{/if}
-					{/if}
+					<RequestPanel
+						listingId={data.listing.id}
+						status={data.listing.status}
+						signedIn={data.signedIn}
+						isOwner={data.isOwner}
+						locations={data.locations}
+						hasAvailability={data.availability.length > 0}
+						slots={data.slots}
+						stakeCents={data.stakeCents}
+						minimumLeadHours={data.minimumLeadHours}
+					/>
 				</div>
 			{/if}
 		</Panel>
@@ -390,10 +285,17 @@
 				<h2 class="panel-title">Status</h2>
 				<p class="status-note">{STATUS_DESCRIPTIONS[data.listing.status]}</p>
 
+				{#if data.listing.status !== 'active' && !canPublish}
+					<p class="status-note publish-blocked">
+						Add {data.locations.length === 0 ? 'a meetup location' : ''}{data.locations.length === 0 && data.availability.length === 0 ? ' and ' : ''}{data.availability.length === 0 ? 'a time you can meet' : ''}
+						below before publishing, so buyers can request a meetup.
+					</p>
+				{/if}
+
 				<div class="status-actions">
 					{#if data.listing.status !== 'active'}
 						<form method="POST" action="?/publish" use:enhance>
-							<Button type="submit">Publish</Button>
+							<Button type="submit" disabled={!canPublish}>Publish</Button>
 						</form>
 					{:else}
 						<form method="POST" action="?/withdraw" use:enhance>
@@ -569,32 +471,19 @@
 		scroll-margin-top: calc(var(--k-header-h) + var(--k-space-4));
 	}
 
-	.commit-note {
-		margin-top: var(--k-space-3);
-		color: var(--k-text-subtle);
-		font-size: var(--k-text-sm);
-	}
 
-	.commit-error {
-		margin-bottom: var(--k-space-3);
-	}
 
-	.commit-fund {
-		margin-top: var(--k-space-3);
-	}
 
-	.commit-fields {
-		display: grid;
-		gap: var(--k-space-4);
-	}
 
-	.commit-action {
-		margin-top: var(--k-space-4);
-	}
 
 	.status-note {
 		color: var(--k-text-muted);
 		font-size: var(--k-text-sm);
+	}
+
+	.publish-blocked {
+		margin-top: var(--k-space-2);
+		color: var(--k-warning);
 	}
 
 	.status-actions {

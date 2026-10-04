@@ -1,6 +1,7 @@
 import { callerId, serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
 import { privilegedCaller } from '../_shared/privileged.ts';
+import { meetupDay } from '../_shared/meetup_day.ts';
 import { settleStake, type Party, type SettlementType } from '../_shared/stake.ts';
 
 /**
@@ -222,64 +223,41 @@ interface Verdict {
  * Pure, and separated from the writing, because this is the only part worth
  * reasoning about carefully — the rest is bookkeeping.
  */
-function verdictFor(commitment: AcceptedRow, windowMs: number, now: number): Verdict | null {
+function verdictFor(commitment: AcceptedRow, now: number): Verdict | null {
 	const buyerIn = commitment.buyer_checked_in_at;
 	const sellerIn = commitment.seller_checked_in_at;
 
 	/** Already verified: completion handles it, not this. */
 	if (commitment.meetup_verified_at) return null;
 
-	const scheduled = new Date(commitment.scheduled_at).getTime();
+	/**
+	 * Everyone has the whole meetup day to check in and verify. Nothing is
+	 * decided until that day is over.
+	 */
+	if (now < meetupDay(commitment.scheduled_at).end.getTime()) return null;
 
 	/** Nobody turned up. Nothing distinguishes the two, so nobody is blamed. */
 	if (!buyerIn && !sellerIn) {
-		return now > scheduled + windowMs
-			? { status: 'stale', responsibleParty: null, resolution: 'stale_no_check_ins' }
-			: null;
+		return { status: 'stale', responsibleParty: null, resolution: 'stale_no_check_ins' };
 	}
 
-	/**
-	 * One of them turned up. The deadline is the one the first check-in set, so
-	 * the absent party had the full window from the moment the other arrived.
-	 */
+	/** One of them turned up and the other never did that day. */
 	if (!buyerIn || !sellerIn) {
-		const deadline = commitment.check_in_window_ends_at
-			? new Date(commitment.check_in_window_ends_at).getTime()
-			: scheduled + windowMs;
-
-		if (now <= deadline) return null;
-
 		const absent: Party = buyerIn ? 'seller' : 'buyer';
-
-		return {
-			status: 'no_show',
-			responsibleParty: absent,
-			resolution: `no_show_${absent}`
-		};
+		return { status: 'no_show', responsibleParty: absent, resolution: `no_show_${absent}` };
 	}
 
 	/**
-	 * BOTH checked in but QR #1 was never scanned.
-	 *
-	 * Stale, not a no-show: both of them have location evidence that they were
-	 * there, so neither can fairly be called absent. The likeliest cause is a
-	 * flat battery or a code nobody thought to scan, and penalising either for
-	 * that would be punishing them for the platform's own step.
-	 *
-	 * Timed from the SECOND arrival, not the first — the meetup effectively
-	 * began when both were present.
+	 * BOTH checked in but QR #1 was never scanned. Stale, not a no-show: both
+	 * have location evidence that they were there, so neither can fairly be
+	 * called absent.
 	 */
-	const bothPresentAt = Math.max(new Date(buyerIn).getTime(), new Date(sellerIn).getTime());
-
-	return now > bothPresentAt + windowMs
-		? { status: 'stale', responsibleParty: null, resolution: 'stale_not_verified' }
-		: null;
+	return { status: 'stale', responsibleParty: null, resolution: 'stale_not_verified' };
 }
 
 /** Applies `verdictFor` to every accepted commitment whose time has come. */
-async function resolveOverdueCommitments(db: Db, windowMinutes: number): Promise<Outcome[]> {
+async function resolveOverdueCommitments(db: Db): Promise<Outcome[]> {
 	const now = Date.now();
-	const windowMs = windowMinutes * 60_000;
 
 	/**
 	 * Only commitments whose scheduled time has passed can be overdue, so that
@@ -301,7 +279,7 @@ async function resolveOverdueCommitments(db: Db, windowMinutes: number): Promise
 	const outcomes: Outcome[] = [];
 
 	for (const candidate of candidates ?? []) {
-		const verdict = verdictFor(candidate, windowMs, now);
+		const verdict = verdictFor(candidate, now);
 		if (!verdict) continue;
 
 		const claimed = await db
@@ -449,14 +427,6 @@ Deno.serve(async (request: Request) => {
 	}
 
 	try {
-		const { data: settings } = await db
-			.from('market_settings')
-			.select('check_in_window_minutes')
-			.eq('id', 1)
-			.maybeSingle<{ check_in_window_minutes: number }>();
-
-		if (!settings) return fail('INTERNAL', 'Market settings are missing.', 500);
-
 		/**
 		 * Sequential, not parallel. The three phases read and write the same
 		 * rows, and running them concurrently would mean two of them racing to
@@ -464,7 +434,7 @@ Deno.serve(async (request: Request) => {
 		 * but it would make a run's output impossible to read.
 		 */
 		const expired = await resolveExpiredRequests(db);
-		const overdue = await resolveOverdueCommitments(db, settings.check_in_window_minutes);
+		const overdue = await resolveOverdueCommitments(db);
 		const reconciled = await reconcileSettlements(db);
 
 		/** Listings whose post-meetup purchase window lapsed without payment. */

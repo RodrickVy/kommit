@@ -4,8 +4,8 @@ import { parsePriceToCents } from '#lib/format';
 import { requireUser } from '#lib/server/auth/guards';
 import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from '#lib/listings/images';
 import { CONDITION_ORDER, type ListingCondition } from '#lib/listings/labels';
-import { generateSlots } from '#lib/commitments/slots';
 import { invokeFunction } from '#lib/server/functions/invoke';
+import { loadRequestOptions } from '#lib/server/request-options';
 import {
 	addAvailability,
 	addLocation,
@@ -74,79 +74,15 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 		.order('position', { ascending: true });
 
 	/**
-	 * Locations and availability let a buyer see where and when this seller is
-	 * willing to meet, before committing to anything.
-	 *
-	 * The override rule applies: a listing with no rows in the join table
-	 * inherits ALL of the seller's non-archived entries. Nothing writes those
-	 * join tables yet, so every listing currently inherits — which is the
-	 * intended default, not a gap.
+	 * Where and when this seller will meet, and — for anyone but the owner —
+	 * the concrete times a buyer can pick. Shared with the Discover request
+	 * dialog so both offer exactly the same choices.
 	 */
-	const { data: locations } = await locals.supabase
-		.from('meetup_locations')
-		.select('id, name, latitude, longitude')
-		.eq('profile_id', listing.seller_id)
-		.eq('is_archived', false)
-		.order('created_at', { ascending: true });
-
-	const { data: availability } = await locals.supabase
-		.from('availability_rules')
-		.select('id, day_of_week, start_time, end_time, timezone, specific_date')
-		.eq('profile_id', listing.seller_id)
-		.eq('is_archived', false)
-		/** Dated times that have passed are no longer on offer. */
-		.or(`specific_date.is.null,specific_date.gte.${new Date().toISOString().slice(0, 10)}`)
-		.order('specific_date', { ascending: true, nullsFirst: true })
-		.order('day_of_week', { ascending: true });
-
-	/**
-	 * Everything needed to offer a commitment request. Skipped entirely for the
-	 * owner, who cannot commit to their own listing — the database forbids it
-	 * and there is no reason to pay for the queries.
-	 */
-	let slots: { startsAt: string; ruleId: string }[] = [];
-	let stakeCents: number | null = null;
+	const options = await loadRequestOptions(locals, listing.seller_id, !isOwner);
+	const { locations, availability, slots, stakeCents, minimumLeadHours } = options;
 	let frozen = false;
 
-	if (!isOwner) {
-		const [settingsResult, takenResult] = await Promise.all([
-			locals.supabase
-				.from('market_settings')
-				.select('base_commitment_fee_cents, minimum_acceptance_lead_hours')
-				.eq('id', 1)
-				.single(),
-			/**
-			 * Moments this seller already has accepted commitments for. They are
-			 * removed from the list rather than offered and rejected: a database
-			 * error after someone has chosen a time is a worse experience than
-			 * never showing it.
-			 *
-			 * This is a courtesy, not the guarantee. The partial unique indexes
-			 * are what actually prevent a double booking, including between two
-			 * buyers who load the page at the same moment.
-			 */
-			locals.supabase
-				.from('commitments')
-				.select('scheduled_at')
-				.eq('seller_id', listing.seller_id)
-				.eq('status', 'accepted')
-		]);
-
-		const settings = settingsResult.data;
-
-		if (settings) {
-			stakeCents = settings.base_commitment_fee_cents;
-
-			slots = generateSlots(availability ?? [], {
-				/** The server's clock decides, never the browser's. */
-				now: new Date(),
-				minimumLeadHours: settings.minimum_acceptance_lead_hours,
-				/** Far enough ahead that a seller's dated times next month show up. */
-				horizonDays: 60,
-				taken: new Set((takenResult.data ?? []).map((row) => row.scheduled_at))
-			}).slice(0, 300);
-		}
-	} else {
+	if (isOwner) {
 		/**
 		 * A listing with an accepted commitment is frozen: two people have
 		 * agreed to meet about this specific item at this specific price, and
@@ -166,12 +102,13 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	return {
 		listing,
 		images: images ?? [],
-		locations: locations ?? [],
-		availability: availability ?? [],
+		locations,
+		availability,
 		isOwner,
 		conditions: CONDITION_ORDER,
 		slots,
 		stakeCents,
+		minimumLeadHours,
 		frozen,
 		signedIn: user !== null
 	};
@@ -449,7 +386,38 @@ export const actions: Actions = {
 	},
 
 	publish: async ({ locals, params, url }) => {
-		await requireOwnedListing(locals, params.listing_id, url.pathname);
+		const { userId } = await requireOwnedListing(locals, params.listing_id, url.pathname);
+
+		/**
+		 * A listing nobody can request is not worth publishing. Checked here so
+		 * the seller is told what is missing; a database trigger enforces it.
+		 */
+		const [locations, availability] = await Promise.all([
+			locals.supabase
+				.from('meetup_locations')
+				.select('id', { count: 'exact', head: true })
+				.eq('profile_id', userId)
+				.eq('is_archived', false),
+			locals.supabase
+				.from('availability_rules')
+				.select('id', { count: 'exact', head: true })
+				.eq('profile_id', userId)
+				.eq('is_archived', false)
+				.or(`specific_date.is.null,specific_date.gte.${new Date().toISOString().slice(0, 10)}`)
+		]);
+
+		const missing = [
+			(locations.count ?? 0) === 0 ? 'a meetup location' : null,
+			(availability.count ?? 0) === 0 ? 'a time you can meet' : null
+		].filter(Boolean);
+
+		if (missing.length > 0) {
+			return fail(400, {
+				errors: {} as Record<string, string>,
+				message: `Add ${missing.join(' and ')} before publishing.`,
+				tone: 'error' as const
+			});
+		}
 
 		const { error: updateError } = await locals.supabase
 			.from('listings')

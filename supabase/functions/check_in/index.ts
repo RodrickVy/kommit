@@ -1,5 +1,6 @@
 import { callerId, serviceClient } from '../_shared/db.ts';
 import { parseCoordinates, validateCheckIn } from '../_shared/geo.ts';
+import { meetupDay } from '../_shared/meetup_day.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
 
 /**
@@ -18,10 +19,8 @@ import { fail, guardRequest, json } from '../_shared/http.ts';
  * `process_commitments` when a deadline passes — and both of those read these
  * rows to decide who was at fault.
  *
- * THE DEADLINE THIS SETS IS THE POINT.
- * The first person to check in starts the clock. From then the other party has
- * `check_in_window_minutes` to arrive, and missing it is what makes them a
- * no-show rather than leaving the commitment unresolvable.
+ * WHEN: any time on the meetup's calendar day. Not arriving by the end of
+ * that day is what makes someone a no-show (see `process_commitments`).
  */
 
 interface CommitmentRow {
@@ -176,45 +175,23 @@ async function record(
 		});
 	}
 
-	const windowMs = settings.check_in_window_minutes * 60_000;
-	const scheduled = new Date(commitment.scheduled_at);
+	/**
+	 * Check-in is open for the whole of the meetup's calendar day. There is no
+	 * buffer of minutes either side: what matters is being at the agreed place
+	 * on the agreed date. Before or after that day, it is refused.
+	 */
+	const day = meetupDay(commitment.scheduled_at);
 	const now = new Date();
 
-	/**
-	 * Check-in opens one window BEFORE the agreed time. Arriving early is
-	 * normal and should not be punished, but checking in at breakfast for a
-	 * dinner meetup would be evidence of nothing.
-	 */
-	const opensAt = new Date(scheduled.getTime() - windowMs);
-
-	if (now < opensAt) {
-		return fail(
-			'NOT_YET_OPEN',
-			`Check-in opens ${settings.check_in_window_minutes} minutes before the meetup.`,
-			409,
-			{ opens_at: opensAt.toISOString() }
-		);
+	if (now < day.start) {
+		return fail('NOT_YET_OPEN', 'Check-in opens on the day of the meetup.', 409, {
+			opens_at: day.start.toISOString()
+		});
 	}
 
-	/**
-	 * The closing deadline is whichever applies:
-	 *
-	 *   * the other party already checked in, so their clock is running and
-	 *     this participant has until it expires
-	 *   * nobody has, so the first check-in must still happen within a window
-	 *     of the agreed time
-	 *
-	 * Past either, `process_commitments` owns the outcome. Accepting a late
-	 * check-in would let someone turn up an hour after the other person left
-	 * and have it count.
-	 */
-	const closesAt = commitment.check_in_window_ends_at
-		? new Date(commitment.check_in_window_ends_at)
-		: new Date(scheduled.getTime() + windowMs);
-
-	if (now > closesAt) {
-		return fail('WINDOW_CLOSED', 'The check-in window for this meetup has closed.', 409, {
-			closed_at: closesAt.toISOString()
+	if (now >= day.end) {
+		return fail('WINDOW_CLOSED', 'The day of this meetup has passed, so check-in is closed.', 409, {
+			closed_at: day.end.toISOString()
 		});
 	}
 
@@ -262,13 +239,8 @@ async function record(
 		role === 'buyer' ? commitment.seller_checked_in_at : commitment.buyer_checked_in_at;
 
 	/**
-	 * THE DEADLINE, set only by the first arrival.
-	 *
-	 * `GREATEST(now + window, scheduled + window)` rather than just
-	 * `now + window`. Checking in an hour early would otherwise set a deadline
-	 * at the agreed time itself, so the other party — arriving exactly on time
-	 * — would already be late. Arriving early must never shorten anybody
-	 * else's clock.
+	 * The deadline is the end of the meetup day, recorded on the first arrival
+	 * so the other person can see how long they have.
 	 */
 	const update: Record<string, string> = {
 		[role === 'buyer' ? 'buyer_checked_in_at' : 'seller_checked_in_at']:
@@ -276,14 +248,7 @@ async function record(
 	};
 
 	if (!otherAlreadyIn) {
-		const scheduled = new Date(commitment.scheduled_at);
-
-		update.check_in_window_ends_at = new Date(
-			Math.max(
-				checkedInAt.getTime() + settings.check_in_window_minutes * 60_000,
-				scheduled.getTime() + settings.check_in_window_minutes * 60_000
-			)
-		).toISOString();
+		update.check_in_window_ends_at = day.end.toISOString();
 	}
 
 	/**

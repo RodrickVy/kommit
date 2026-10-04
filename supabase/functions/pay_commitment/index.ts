@@ -6,6 +6,7 @@ import { consumeQrToken, validateQrToken } from '../_shared/qr.ts';
 import { TX_FEE_LAMPORTS, getWalletBalance } from '../_shared/solana.ts';
 import { transferFunds } from '../_shared/transfer.ts';
 import { getUserWallet } from '../_shared/wallets.ts';
+import { meetupDay } from '../_shared/meetup_day.ts';
 
 /**
  * pay_commitment — the optional item purchase, after a verified meetup.
@@ -43,6 +44,7 @@ interface CommitmentRow {
 	buyer_id: string;
 	seller_id: string;
 	listing_id: string;
+	scheduled_at: string;
 	meetup_verified_at: string | null;
 	listings: { id: string; title: string; price_cents: number; status: string } | null;
 }
@@ -50,10 +52,9 @@ interface CommitmentRow {
 /**
  * Statuses a listing may be bought in.
  *
- * A verified meetup keeps the listing `reserved` for the buyer's purchase
- * window (see `listing_is_held` in the migrations), so `reserved` is the
- * normal state here. `active` covers a buyer paying after that window lapsed
- * and the listing went back on sale.
+ * A verified meetup keeps the listing `reserved` until the end of the meetup
+ * day (see `listing_is_held` in the migrations), so `reserved` is the normal
+ * state here.
  */
 const PURCHASABLE = new Set(['active', 'reserved']);
 
@@ -88,7 +89,7 @@ Deno.serve(async (request: Request) => {
 		const { data: commitment } = await db
 			.from('commitments')
 			.select(
-				'id, status, buyer_id, seller_id, listing_id, meetup_verified_at, listings(id, title, price_cents, status)'
+				'id, status, buyer_id, seller_id, listing_id, scheduled_at, meetup_verified_at, listings(id, title, price_cents, status)'
 			)
 			.eq('id', body.commitment_id)
 			.maybeSingle<CommitmentRow>();
@@ -102,6 +103,11 @@ Deno.serve(async (request: Request) => {
 
 		if (commitment.status !== 'completed' || !commitment.meetup_verified_at) {
 			return fail('INVALID_REQUEST', 'The meetup has to be verified before paying.', 409);
+		}
+
+		/** Buying happens at the meetup, on its day — not days later. */
+		if (Date.now() >= meetupDay(commitment.scheduled_at).end.getTime()) {
+			return fail('WINDOW_CLOSED', 'The day of this meetup has passed, so it can no longer be paid for here.', 409);
 		}
 
 		if (!commitment.listings || !PURCHASABLE.has(commitment.listings.status)) {

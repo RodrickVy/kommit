@@ -1,6 +1,6 @@
 <script lang="ts">
 	import Badge from '#lib/components/ui/Badge.svelte';
-	import Button from '#lib/components/ui/Button.svelte';
+	import RequestDialog from '#lib/components/commitments/RequestDialog.svelte';
 	import { formatPrice } from '#lib/format';
 	import { CONDITION_LABELS, STATUS_LABELS, type ListingCondition, type ListingStatus } from '#lib/listings/labels';
 	import { listingImageUrl } from '#lib/listings/images';
@@ -78,7 +78,7 @@
 {#if showRequest}
 	<!-- A sibling of the card link, not inside it: a link cannot hold a link. -->
 	<div class="request">
-		<Button href="/sell/{listing.id}#request" size="sm">Request a meetup</Button>
+		<RequestDialog listingId={listing.id} title={listing.title} />
 	</div>
 {/if}
 </article>

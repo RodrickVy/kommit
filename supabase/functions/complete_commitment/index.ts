@@ -2,6 +2,7 @@ import { callerId, serviceClient } from '../_shared/db.ts';
 import { fail, guardRequest, json } from '../_shared/http.ts';
 import { consumeQrToken, releaseQrToken, validateQrToken } from '../_shared/qr.ts';
 import { settleStake } from '../_shared/stake.ts';
+import { meetupDay } from '../_shared/meetup_day.ts';
 
 /**
  * complete_commitment — processes QR #1 and closes the commitment successfully.
@@ -25,6 +26,7 @@ import { settleStake } from '../_shared/stake.ts';
 interface CommitmentRow {
 	id: string;
 	status: string;
+	scheduled_at: string;
 	buyer_id: string;
 	seller_id: string;
 	buyer_checked_in_at: string | null;
@@ -56,7 +58,7 @@ Deno.serve(async (request: Request) => {
 		const { data: commitment } = await db
 			.from('commitments')
 			.select(
-				'id, status, buyer_id, seller_id, buyer_checked_in_at, seller_checked_in_at, meetup_verified_at'
+				'id, status, buyer_id, seller_id, scheduled_at, buyer_checked_in_at, seller_checked_in_at, meetup_verified_at'
 			)
 			.eq('id', body.commitment_id)
 			.maybeSingle<CommitmentRow>();
@@ -102,6 +104,11 @@ Deno.serve(async (request: Request) => {
 				'Both of you need to be checked in before the meetup can be verified.',
 				409
 			);
+		}
+
+		/** Verification, like check-in, belongs to the meetup's own day. */
+		if (Date.now() >= meetupDay(commitment.scheduled_at).end.getTime()) {
+			return fail('WINDOW_CLOSED', 'The day of this meetup has passed.', 409);
 		}
 
 		const validation = await validateQrToken(db, {
