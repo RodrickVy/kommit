@@ -1,6 +1,5 @@
 import { fail, redirect } from '@sveltejs/kit';
 import { safeRedirectTarget } from '#lib/server/auth/guards';
-import { seedDemoData } from '#lib/server/seed/demo-data';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -38,9 +37,6 @@ export const actions: Actions = {
 		const email = String(form.get('email') ?? '').trim();
 		const password = String(form.get('password') ?? '');
 		const displayName = String(form.get('displayName') ?? '').trim();
-
-		/** An unchecked checkbox submits nothing at all, so absence means false. */
-		const withDemoData = form.get('withDemoData') !== null;
 
 		/**
 		 * Field-level errors, collected rather than returned on the first
@@ -99,8 +95,7 @@ export const actions: Actions = {
 				formError,
 				awaitingConfirmation: false,
 				email,
-				displayName,
-				withDemoData
+				displayName
 			});
 		};
 
@@ -146,26 +141,32 @@ export const actions: Actions = {
 				return failure(400, { errors: { password: error.message } });
 			}
 
-			return failure(500, { formError: 'The account could not be created. Please try again.' });
-		}
-
-		/**
-		 * Seed the account if asked, before either exit path below.
-		 *
-		 * Deliberately AFTER the account exists and BEFORE the redirect, so the
-		 * listings are already there when the user lands.
-		 *
-		 * A failure here is logged and swallowed. The account was created
-		 * successfully, and refusing to sign someone in because their sample
-		 * data could not be written would be a worse outcome than an empty
-		 * account — which is exactly what they would have had anyway.
-		 */
-		if (withDemoData && data.user) {
-			try {
-				await seedDemoData(data.user.id);
-			} catch (cause) {
-				console.error('Failed to seed demo data for new account', cause);
+			/**
+			 * Supabase could not send the confirmation email.
+			 *
+			 * Almost always means the project has "Confirm email" switched on
+			 * while still using Supabase's built-in SMTP, which is rate-limited
+			 * to a handful of messages an hour and is not intended for real use.
+			 * The symptom is maddening without this message: sign-up works once
+			 * or twice, then fails for an hour, then works again.
+			 *
+			 * The account itself is usually created — only the email failed — so
+			 * the message says to try signing in rather than to try again.
+			 */
+			if (
+				message.includes('sending confirmation') ||
+				message.includes('error sending') ||
+				message.includes('smtp') ||
+				message.includes('rate limit') ||
+				error.status === 429
+			) {
+				return failure(503, {
+					formError:
+						'Your account may have been created, but the confirmation email could not be sent — the email service is rate limited. Try signing in; if that does not work, wait a few minutes and try again.'
+				});
 			}
+
+			return failure(500, { formError: 'The account could not be created. Please try again.' });
 		}
 
 		/**
@@ -183,8 +184,7 @@ export const actions: Actions = {
 				formError: null,
 				awaitingConfirmation: true,
 				email,
-				displayName,
-				withDemoData
+				displayName
 			};
 		}
 

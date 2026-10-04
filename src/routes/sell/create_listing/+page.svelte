@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { enhance } from '$app/forms';
 	import Alert from '#lib/components/ui/Alert.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
@@ -6,6 +7,7 @@
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import { CONDITION_LABELS } from '#lib/listings/labels';
+	import { LISTING_EXAMPLES } from '#lib/listings/examples';
 	import type { PageProps } from './$types';
 
 	/**
@@ -14,6 +16,51 @@
 	let { data, form }: PageProps = $props();
 
 	let submitting = $state(false);
+
+	/**
+	 * Values currently in the form. Bound rather than set as plain `value`
+	 * attributes, because the example filler below has to be able to change
+	 * them.
+	 *
+	 * `untrack` because these are SEEDED from `form`, not synchronised with it,
+	 * and that is correct in both directions:
+	 *
+	 *   - without JavaScript a failed submission re-renders the page, the
+	 *     component mounts fresh, and this reads the returned values
+	 *   - with JavaScript the component is not remounted, and the inputs
+	 *     already hold what the user typed — re-reading `form` here would
+	 *     overwrite their edits with the values they had just submitted
+	 *
+	 * Without `untrack` Svelte warns, and rightly: the pattern is usually a
+	 * bug. Here it is deliberate, so it says so.
+	 */
+	let title = $state(untrack(() => form?.title) ?? '');
+	let price = $state(untrack(() => form?.price) ?? '');
+	let condition = $state(untrack(() => form?.condition) ?? '');
+	let description = $state(untrack(() => form?.description) ?? '');
+
+	/** Which example to offer next, so repeated clicks cycle rather than repeat. */
+	let exampleIndex = $state(0);
+
+	/**
+	 * Fills the form with a worked example.
+	 *
+	 * Purely client-side: it populates the fields and nothing more. The seller
+	 * can edit every value before saving, and what they submit goes through
+	 * exactly the same validation as anything typed by hand — the example is a
+	 * starting point, not a privileged path into the database.
+	 */
+	function fillWithExample() {
+		const example = LISTING_EXAMPLES[exampleIndex % LISTING_EXAMPLES.length];
+		if (!example) return;
+
+		title = example.title;
+		price = example.price;
+		condition = example.condition;
+		description = example.description;
+
+		exampleIndex += 1;
+	}
 </script>
 
 <svelte:head>
@@ -43,6 +90,21 @@
 				};
 			}}
 		>
+			<!--
+				Offered rather than imposed. Nothing is written until the seller
+				submits, and every value stays editable, so this is a worked
+				example of what a good listing looks like rather than data
+				appearing in their account unasked.
+			-->
+			<div class="example">
+				<p class="example-text">
+					First listing? Fill the form with a worked example and edit it.
+				</p>
+				<Button type="button" variant="secondary" size="sm" onclick={fillWithExample}>
+					Use an example
+				</Button>
+			</div>
+
 			<div class="fields">
 				<Field
 					id="title"
@@ -57,7 +119,7 @@
 							type="text"
 							maxlength="120"
 							required
-							value={form?.title ?? ''}
+							bind:value={title}
 							aria-describedby={describedBy}
 							aria-invalid={invalid}
 						/>
@@ -77,7 +139,7 @@
 							type="text"
 							inputmode="decimal"
 							required
-							value={form?.price ?? ''}
+							bind:value={price}
 							aria-describedby={describedBy}
 							aria-invalid={invalid}
 						/>
@@ -90,14 +152,13 @@
 							{id}
 							name="condition"
 							required
+							bind:value={condition}
 							aria-describedby={describedBy}
 							aria-invalid={invalid}
 						>
-							<option value="" disabled selected={!form?.condition}>Choose a condition</option>
+							<option value="" disabled>Choose a condition</option>
 							{#each data.conditions as value (value)}
-								<option {value} selected={form?.condition === value}>
-									{CONDITION_LABELS[value]}
-								</option>
+								<option {value}>{CONDITION_LABELS[value]}</option>
 							{/each}
 						</select>
 					{/snippet}
@@ -114,9 +175,10 @@
 							{id}
 							name="description"
 							maxlength="4000"
+							bind:value={description}
 							aria-describedby={describedBy}
-							aria-invalid={invalid}>{form?.description ?? ''}</textarea
-						>
+							aria-invalid={invalid}
+						></textarea>
 					{/snippet}
 				</Field>
 			</div>
@@ -138,6 +200,22 @@
 
 	.banner {
 		margin-bottom: var(--k-space-4);
+	}
+
+	.example {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--k-space-3);
+		margin-bottom: var(--k-space-5);
+		padding: var(--k-space-3);
+		background-color: var(--k-surface-raised);
+	}
+
+	.example-text {
+		color: var(--k-text-muted);
+		font-size: var(--k-text-sm);
 	}
 
 	.fields {

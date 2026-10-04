@@ -16,9 +16,12 @@ What works today:
 - **Listings** — create, edit, publish, withdraw and delete. Photographs upload
   with per-file progress and per-file errors.
 - **Discover** — browse active listings, paginated.
-- **Optional sample data** — a checkbox on sign-up seeds a new account with
-  five listings, two meetup locations and weekly availability, so there is
-  something to look at immediately.
+- **Seller settings** — meetup locations and weekly availability, managed on
+  the account page. Every listing inherits them.
+- **Worked examples on demand** — the create-listing form can fill itself with
+  a realistic example, and the location and availability sections can add
+  theirs. Offered per form rather than seeded at sign-up, so nothing appears in
+  an account that was not asked for.
 - **Schema** — nine tables with Row Level Security, applied to the hosted
   project. See [`docs/data-model.md`](docs/data-model.md).
 

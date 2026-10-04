@@ -49,6 +49,16 @@
 		 */
 		disabled?: boolean;
 
+		/**
+		 * Click handler, for the `<button>` form only.
+		 *
+		 * Most actions in kommitly are form submissions, which need no handler
+		 * at all and keep working without JavaScript. This exists for the
+		 * genuinely client-side cases — filling a form with an example, toggling
+		 * a disclosure — where there is nothing to submit.
+		 */
+		onclick?: ((event: MouseEvent) => void) | undefined;
+
 		/** Button label. Text, not an icon on its own — an icon-only control needs a `.k-visually-hidden` label. */
 		children: Snippet;
 	}
@@ -59,6 +69,7 @@
 		href,
 		type = 'button',
 		disabled = false,
+		onclick,
 		children
 	}: Props = $props();
 </script>
@@ -68,7 +79,7 @@
 		{@render children()}
 	</a>
 {:else}
-	<button class="btn k-cut" data-variant={variant} data-size={size} {type} {disabled}>
+	<button class="btn k-cut" data-variant={variant} data-size={size} {type} {disabled} {onclick}>
 		{@render children()}
 	</button>
 {/if}
