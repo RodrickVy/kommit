@@ -267,13 +267,15 @@ The moment is held from the instant the seller **accepts**, not when a buyer
 requests. Several buyers may request the same time while it is unaccepted; the
 first acceptance takes it, and the others can no longer be accepted for it.
 
-Enforcement is a uniqueness rule over `(seller_id, scheduled_at)` restricted to
-**live** statuses only, so a cancelled or expired commitment releases the
-moment again. In Postgres that is a partial unique index.
+Enforcement is a partial unique index over `(seller_id, scheduled_at)`
+restricted to **live** statuses only, so a cancelled or expired commitment
+releases the moment again. See "What a commitment is unique on" under §10 for
+the companion rule covering the listing itself.
 
 Note that this constrains the seller's calendar, not the rule. A seller with a
-Tuesday 5–8pm rule can hold several commitments on different Tuesdays, and
-several at different times within one evening — just not two at once.
+Tuesday 5–8pm rule can hold commitments on many different Tuesdays, and several
+at different times within one evening — just never two at the same instant,
+even for different listings.
 
 ## 7. `listing_availability_rules`
 
@@ -294,7 +296,7 @@ non-archived rules applies to this listing.
 | `seller_id` | `uuid` | no | FK to `profiles(id)`. Absent from the original model but required — a listing must belong to someone. |
 | `title` | `text` | no | |
 | `description` | `text` | yes | |
-| `price_cents` | `bigint` | no | Fiat minor units. |
+| `price_cents` | `bigint` | no | CAD cents. |
 | `condition` | `listing_condition` | no | Enum, following the convention buyers already recognise from Facebook Marketplace. |
 | `status` | `listing_status` | no | Enum. |
 | `created_at` | `timestamptz` | no | |
@@ -313,10 +315,26 @@ compare.
 
 `draft` · `active` · `reserved` · `sold` · `withdrawn`
 
-`/discover` shows only `active`. `reserved` covers an item with a live
-accepted commitment against it, so it stops appearing in search without being
-marked sold — the buyer may still inspect it and walk away, at which point it
-returns to `active`.
+`/discover` shows only `active`. `reserved` covers an item with a live accepted
+commitment against it, so it stops appearing in search without being marked
+sold.
+
+**`reserved` returns to `active` automatically** when its commitment is
+cancelled, expires, or goes stale. The seller does not re-list by hand. This
+must be automatic: a seller whose buyer cancelled at 2am should not wake up to
+an item that silently stopped being visible.
+
+### One listing is one item
+
+**There is no quantity field, deliberately.** A listing represents a single
+physical item, and a seller with three identical chairs creates three listings.
+
+That constraint is what makes the rest of the model work. Because an item is
+singular, it can carry at most one live commitment, which is what `reserved`
+expresses and what lets the platform promise a buyer that the thing they are
+driving across town for is actually still available. A quantity column would
+break that promise quietly — two buyers could both hold a commitment on "the
+last one".
 
 ## 9. `listing_images`
 
@@ -351,7 +369,7 @@ ever accepted.
 | `seller_stake_cents` | `bigint` | no | Separate from the buyer's by design — §33 requires reputation-adjusted, asymmetric stakes. |
 | `status` | `commitment_status` | no | See below. |
 | `responsible_party` | `commitment_party` | yes | `buyer` or `seller`. Set only for `cancelled` and `no_show`, where responsibility is known. Always null for `stale`. |
-| `request_expires_at` | `timestamptz` | no | **Creation + 24 hours.** |
+| `request_expires_at` | `timestamptz` | no | The acceptance deadline. Derived — see "When a request expires" below. |
 | `accepted_at` | `timestamptz` | yes | |
 | `declined_at` | `timestamptz` | yes | |
 | `cancelled_at` | `timestamptz` | yes | |
@@ -405,6 +423,60 @@ Note the second row: the request *expired*, and the seller *ignored* it. Those
 are two different facts about one event, and §5 requires both be kept. The
 status records what happened to the request; `responsible_party` plus the
 event log records the seller behaviour. No automatic penalty is applied.
+
+### When a request expires
+
+A request has a 24-hour acceptance window, **but never one that runs so close
+to the meetup that acceptance becomes useless.**
+
+```
+request_expires_at = LEAST(
+    created_at   + market_settings.request_expiry_hours,        -- 24h
+    scheduled_at - market_settings.minimum_acceptance_lead_hours -- 5h
+)
+```
+
+Worked through: a buyer requests 5pm at 11am. The 24-hour window would run to
+11am tomorrow, long past the meetup. The five-hour lead rule caps it at
+**12pm** — if the seller has not accepted by noon, the request expires and the
+seller gets an ignored event.
+
+**Why the lead time exists.** An acceptance at 4:50pm for a 5pm meetup is worth
+nothing to the buyer: they have not left the house, they may be at work, and
+they cannot get there. Worse, the moment the seller accepts, the buyer's stake
+is locked and the clock starts — so a late acceptance can push an honest buyer
+straight into a no-show they had no way to avoid. The lead time makes sure that
+by the time anyone's money is committed, both parties have real time to plan.
+
+It also sets a floor on how soon a meetup can be requested at all: a request
+for a time **less than five hours away is invalid**, because its deadline would
+already have passed. This is enforced when the request is created, not later.
+
+Both figures live in `market_settings` rather than in code, so they can be
+tuned without a deployment.
+
+Applying the deadline — flipping a request to `expired` once the moment passes
+— belongs to a scheduled function, not to a page load. A request must expire
+whether or not anybody happens to be looking at it.
+
+### What a commitment is unique on
+
+Two rules, both enforced in the database rather than in application code,
+because both protect a promise made to a user.
+
+**One live commitment per listing.** A listing is one physical item, so it
+cannot be promised to two people at once. This is what `reserved` expresses.
+
+**One accepted commitment per seller per moment.** A seller cannot be in two
+places at once, even across different listings. Two accepted commitments at the
+same instant would guarantee at least one no-show — and the model would then
+penalise someone for a situation the platform created.
+
+Taken together, a commitment is unique on **seller, item, and moment**.
+
+Both are partial unique indexes restricted to live statuses, so a cancelled,
+expired or stale commitment releases its hold and the listing returns to
+`active`.
 
 ---
 
@@ -623,7 +695,8 @@ Admin access only — see the access note at the end of this section.
 | `min_commitment_fee_cents` | `bigint` | no | Floor for any calculated stake. |
 | `max_commitment_fee_cents` | `bigint` | no | Ceiling for any calculated stake. |
 | `check_in_radius_metres` | `integer` | no | **200.** |
-| `request_expiry_hours` | `integer` | no | **24.** |
+| `request_expiry_hours` | `integer` | no | **24.** Maximum acceptance window. |
+| `minimum_acceptance_lead_hours` | `integer` | no | **5.** Minimum gap between acceptance and the meetup. Also the floor on how soon a meetup can be requested. |
 | `check_in_window_minutes` | `integer` | no | **60.** |
 | `vote_timezone` | `text` | no | `America/Vancouver`. Decides which calendar month a charity vote belongs to. |
 | `active_charity_id` | `uuid` | yes | FK to `charities(id)`. Where forfeited stakes currently go. |
@@ -724,22 +797,25 @@ Recorded so the reasoning is not re-litigated later.
 | Wallet creation | **At account creation**, before any deposit — a user needs an address to send to. |
 | Funding | **SOL only.** No bank or card path. |
 | Market configuration | `market_settings` is the general configuration table, admin-only, holding tunable parameters rather than formulas. |
+| `reserved` → `active` | **Automatic** on cancel, expiry or stale. The seller never re-lists by hand. |
+| Two commitments at one moment | **Not allowed**, even across different listings. Unique on seller, item and moment. |
+| Listing quantity | **None.** One listing is one item; three identical chairs are three listings. |
+| Minimum notice | **5 hours** between acceptance and the meetup, which also floors how soon a meetup can be requested. |
+| Request expiry | `LEAST(created_at + 24h, scheduled_at - 5h)`. |
 
 ## Open questions
 
-1. **Does `reserved` return to `active` automatically** when a commitment is
-   cancelled, expires or goes stale, or does the seller re-list by hand? The
-   automatic version is better for the seller and worse if a buyer is still
-   mid-inspection.
-2. **Can a seller hold two commitments for the same moment on two different
-   listings?** The uniqueness rule above says no, on the grounds that a person
-   cannot be in two places at once. But a seller meeting one buyer could
-   plausibly sell them two items — worth confirming the rule is not too strict.
-3. **Minimum notice for a commitment request.** Can a buyer request a meetup
-   for 20 minutes from now? Without a floor, the 24-hour acceptance window can
-   outlive the meetup time itself.
-4. **What happens to a commitment whose `scheduled_at` passes while still
-   `pending`** — never accepted, but the moment has gone. Expired, or declined?
-5. **`market_settings_history`** — recommended above so a past stake or
-   reputation score can be explained under the parameters in force at the time.
-   Not built unless approved.
+1. **What happens to a `pending` commitment whose `scheduled_at` passes**
+   without ever being accepted? Under the expiry rule above it should already
+   have expired five hours earlier, so this ought to be unreachable — but it is
+   worth confirming the intent is that no such row can exist, rather than
+   leaving it undefined.
+2. **Can a buyer hold several commitments at the same moment**, with different
+   sellers? The rules above constrain sellers and listings but say nothing
+   about buyers, who equally cannot be in two places at once.
+3. **May a seller decline *and* be marked ignored?** Declining is an action and
+   expiry is an absence, so they should be exclusive — confirming no path
+   records both.
+4. **`market_settings_history`** — recommended so a past stake or reputation
+   score can be explained under the parameters in force at the time. Not built
+   unless approved.
