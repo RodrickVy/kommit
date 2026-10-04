@@ -55,6 +55,36 @@ export type Database = {
           },
         ]
       }
+      charities: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          logo_path: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          logo_path?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          logo_path?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       commitment_events: {
         Row: {
           actor_profile_id: string | null
@@ -106,6 +136,7 @@ export type Database = {
           buyer_checked_in_at: string | null
           buyer_id: string
           buyer_stake_cents: number
+          buyer_stake_lamports: number | null
           cancelled_at: string | null
           check_in_window_ends_at: string | null
           completed_at: string | null
@@ -123,6 +154,7 @@ export type Database = {
           seller_checked_in_at: string | null
           seller_id: string
           seller_stake_cents: number
+          seller_stake_lamports: number | null
           status: Database["public"]["Enums"]["commitment_status"]
         }
         Insert: {
@@ -130,6 +162,7 @@ export type Database = {
           buyer_checked_in_at?: string | null
           buyer_id: string
           buyer_stake_cents: number
+          buyer_stake_lamports?: number | null
           cancelled_at?: string | null
           check_in_window_ends_at?: string | null
           completed_at?: string | null
@@ -147,6 +180,7 @@ export type Database = {
           seller_checked_in_at?: string | null
           seller_id: string
           seller_stake_cents: number
+          seller_stake_lamports?: number | null
           status?: Database["public"]["Enums"]["commitment_status"]
         }
         Update: {
@@ -154,6 +188,7 @@ export type Database = {
           buyer_checked_in_at?: string | null
           buyer_id?: string
           buyer_stake_cents?: number
+          buyer_stake_lamports?: number | null
           cancelled_at?: string | null
           check_in_window_ends_at?: string | null
           completed_at?: string | null
@@ -171,6 +206,7 @@ export type Database = {
           seller_checked_in_at?: string | null
           seller_id?: string
           seller_stake_cents?: number
+          seller_stake_lamports?: number | null
           status?: Database["public"]["Enums"]["commitment_status"]
         }
         Relationships: [
@@ -403,6 +439,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "market_settings_active_charity_fkey"
+            columns: ["active_charity_id"]
+            isOneToOne: false
+            referencedRelation: "charities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "market_settings_updated_by_fkey"
             columns: ["updated_by"]
             isOneToOne: false
@@ -560,7 +603,15 @@ export type Database = {
           reputation_updated_at?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_last_vote_choice_fkey"
+            columns: ["last_vote_choice"]
+            isOneToOne: false
+            referencedRelation: "charities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wallet_transactions: {
         Row: {
@@ -613,6 +664,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "wallet_transactions_charity_fkey"
+            columns: ["charity_id"]
+            isOneToOne: false
+            referencedRelation: "charities"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "wallet_transactions_commitment_id_fkey"
             columns: ["commitment_id"]
             isOneToOne: false
@@ -657,6 +715,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "wallets_charity_fkey"
+            columns: ["charity_id"]
+            isOneToOne: true
+            referencedRelation: "charities"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "wallets_profile_id_fkey"
             columns: ["profile_id"]
