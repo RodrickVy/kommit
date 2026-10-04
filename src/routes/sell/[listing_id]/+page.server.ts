@@ -6,6 +6,12 @@ import { ACCEPTED_IMAGE_TYPES, MAX_IMAGE_BYTES } from '#lib/listings/images';
 import { CONDITION_ORDER, type ListingCondition } from '#lib/listings/labels';
 import { generateSlots } from '#lib/commitments/slots';
 import { invokeFunction } from '#lib/server/functions/invoke';
+import {
+	addAvailability,
+	addLocation,
+	removeAvailability,
+	removeLocation
+} from '#lib/server/meetup-setup';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -78,15 +84,19 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 	 */
 	const { data: locations } = await locals.supabase
 		.from('meetup_locations')
-		.select('id, name')
+		.select('id, name, latitude, longitude')
 		.eq('profile_id', listing.seller_id)
-		.eq('is_archived', false);
+		.eq('is_archived', false)
+		.order('created_at', { ascending: true });
 
 	const { data: availability } = await locals.supabase
 		.from('availability_rules')
-		.select('id, day_of_week, start_time, end_time, timezone')
+		.select('id, day_of_week, start_time, end_time, timezone, specific_date')
 		.eq('profile_id', listing.seller_id)
 		.eq('is_archived', false)
+		/** Dated times that have passed are no longer on offer. */
+		.or(`specific_date.is.null,specific_date.gte.${new Date().toISOString().slice(0, 10)}`)
+		.order('specific_date', { ascending: true, nullsFirst: true })
 		.order('day_of_week', { ascending: true });
 
 	/**
@@ -131,8 +141,10 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 				/** The server's clock decides, never the browser's. */
 				now: new Date(),
 				minimumLeadHours: settings.minimum_acceptance_lead_hours,
+				/** Far enough ahead that a seller's dated times next month show up. */
+				horizonDays: 60,
 				taken: new Set((takenResult.data ?? []).map((row) => row.scheduled_at))
-			}).slice(0, 60);
+			}).slice(0, 300);
 		}
 	} else {
 		/**
@@ -257,6 +269,31 @@ export const actions: Actions = {
 		}
 
 		redirect(303, `/commitment/${result.data.commitment_id}`);
+	},
+
+	/**
+	 * The seller's meetup locations and times, editable from their listing.
+	 * They belong to the seller, so only a signed-in user's own rows change —
+	 * Row Level Security enforces it as well.
+	 */
+	addLocation: async ({ request, locals, url }) => {
+		const user = requireUser(await locals.getVerifiedUser(), url.pathname);
+		return addLocation(locals, user.id, await request.formData());
+	},
+
+	removeLocation: async ({ request, locals, url }) => {
+		const user = requireUser(await locals.getVerifiedUser(), url.pathname);
+		return removeLocation(locals, user.id, await request.formData());
+	},
+
+	addAvailability: async ({ request, locals, url }) => {
+		const user = requireUser(await locals.getVerifiedUser(), url.pathname);
+		return addAvailability(locals, user.id, await request.formData());
+	},
+
+	removeAvailability: async ({ request, locals, url }) => {
+		const user = requireUser(await locals.getVerifiedUser(), url.pathname);
+		return removeAvailability(locals, user.id, await request.formData());
 	},
 
 	/** Edit the item's details. */

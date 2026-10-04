@@ -22,6 +22,7 @@ export type Database = {
           id: string
           is_archived: boolean
           profile_id: string
+          specific_date: string | null
           start_time: string
           timezone: string
         }
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           is_archived?: boolean
           profile_id: string
+          specific_date?: string | null
           start_time: string
           timezone?: string
         }
@@ -42,6 +44,7 @@ export type Database = {
           id?: string
           is_archived?: boolean
           profile_id?: string
+          specific_date?: string | null
           start_time?: string
           timezone?: string
         }
@@ -1006,7 +1009,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      listing_is_held: { Args: { target_listing: string }; Returns: boolean }
+      release_purchase_holds: { Args: never; Returns: number }
     }
     Enums: {
       commitment_event_type:

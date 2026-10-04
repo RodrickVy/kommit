@@ -15,6 +15,8 @@ export interface AvailabilityRule {
 	readonly end_time: string;
 	/** IANA zone the wall-clock times are expressed in. */
 	readonly timezone: string;
+	/** `YYYY-MM-DD` when the rule is for one date only; null repeats weekly. */
+	readonly specific_date?: string | null;
 }
 
 /** A specific moment a buyer can choose. */
@@ -154,6 +156,12 @@ export function generateSlots(
 			const year = Number(field('year'));
 			const month = Number(field('month'));
 			const day = Number(field('day'));
+
+			/** A dated rule produces slots on that one date only. */
+			if (rule.specific_date) {
+				const local = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+				if (local !== rule.specific_date) continue;
+			}
 
 			const windowStart = wallTimeToInstant(year, month, day, start.hours, start.minutes, rule.timezone);
 			const windowEnd = wallTimeToInstant(year, month, day, end.hours, end.minutes, rule.timezone);

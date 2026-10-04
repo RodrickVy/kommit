@@ -4,6 +4,7 @@
 	import Badge from '#lib/components/ui/Badge.svelte';
 	import Button from '#lib/components/ui/Button.svelte';
 	import ImageUploader from '#lib/components/listings/ImageUploader.svelte';
+	import MeetupSetup from '#lib/components/listings/MeetupSetup.svelte';
 	import PageHeader from '#lib/components/ui/PageHeader.svelte';
 	import Panel from '#lib/components/ui/Panel.svelte';
 	import { formatPrice, formatTimeOfDay } from '#lib/format';
@@ -48,14 +49,43 @@
 	 * Both sides are looking at the same moment; each should see it in the
 	 * clock they actually live by.
 	 */
-	function formatSlot(iso: string): string {
+	function formatSlotTime(iso: string): string {
+		return new Intl.DateTimeFormat('en-CA', { hour: 'numeric', minute: '2-digit' }).format(
+			new Date(iso)
+		);
+	}
+
+	function formatSlotDay(iso: string): string {
 		return new Intl.DateTimeFormat('en-CA', {
-			weekday: 'short',
+			weekday: 'long',
 			month: 'short',
-			day: 'numeric',
-			hour: 'numeric',
-			minute: '2-digit'
+			day: 'numeric'
 		}).format(new Date(iso));
+	}
+
+	/** Slots grouped by the viewer's local day, so the picker reads as a calendar. */
+	const slotDays = $derived.by(() => {
+		const days: { label: string; slots: typeof data.slots }[] = [];
+		for (const slot of data.slots) {
+			const label = formatSlotDay(slot.startsAt);
+			const last = days.at(-1);
+			if (last && last.label === label) last.slots.push(slot);
+			else days.push({ label, slots: [slot] });
+		}
+		return days;
+	});
+
+	/** A dated availability reads as its date; a weekly one as its weekday. */
+	function availabilityDay(slot: (typeof data.availability)[number]): string {
+		if (slot.specific_date) {
+			return new Intl.DateTimeFormat('en-CA', {
+				weekday: 'short',
+				month: 'short',
+				day: 'numeric',
+				timeZone: 'UTC'
+			}).format(new Date(`${slot.specific_date}T00:00:00Z`));
+		}
+		return `Every ${DAY_LABELS[slot.day_of_week]}`;
 	}
 </script>
 
@@ -226,6 +256,16 @@
 				</fieldset>
 			</Panel>
 		{/if}
+
+		{#if data.isOwner}
+			<!--
+				Where and when buyers can meet you. Shared by all your listings,
+				and required before anyone can request a meetup for this one.
+			-->
+			<div class="setup">
+				<MeetupSetup locations={data.locations} availability={data.availability} />
+			</div>
+		{/if}
 	</div>
 
 	<aside class="side">
@@ -308,14 +348,17 @@
 								<Field id="scheduledAt" label="When">
 									{#snippet children({ id, describedBy, invalid })}
 										<select {id} name="scheduledAt" required aria-describedby={describedBy} aria-invalid={invalid}>
-											{#each data.slots as slot (slot.startsAt)}
-												<!--
-													Rendered in the viewer's own timezone. The value is
-													the exact instant, so a buyer in another zone sees
-													their local time while both sides mean the same
-													moment.
-												-->
-												<option value={slot.startsAt}>{formatSlot(slot.startsAt)}</option>
+											<!--
+												Rendered in the viewer's own timezone. The value is the
+												exact instant, so a buyer in another zone sees their
+												local time while both sides mean the same moment.
+											-->
+											{#each slotDays as day (day.label)}
+												<optgroup label={day.label}>
+													{#each day.slots as slot (slot.startsAt)}
+														<option value={slot.startsAt}>{formatSlotTime(slot.startsAt)}</option>
+													{/each}
+												</optgroup>
 											{/each}
 										</select>
 									{/snippet}
@@ -395,7 +438,7 @@
 				<ul class="plain" role="list">
 					{#each data.availability as slot (slot.id)}
 						<li>
-							{DAY_LABELS[slot.day_of_week]}, {formatTimeOfDay(slot.start_time)} –
+							{availabilityDay(slot)}, {formatTimeOfDay(slot.start_time)} –
 							{formatTimeOfDay(slot.end_time)}
 						</li>
 					{/each}
@@ -410,6 +453,11 @@
 <style>
 	.banner {
 		margin-bottom: var(--k-space-4);
+	}
+
+	/* MeetupSetup carries its own top margin for the account page. */
+	.setup :global(.section:first-child) {
+		margin-top: 0;
 	}
 
 	.layout {

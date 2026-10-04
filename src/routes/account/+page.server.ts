@@ -2,6 +2,12 @@ import { fail, redirect } from '@sveltejs/kit';
 import { requireUser } from '#lib/server/auth/guards';
 import { AVAILABILITY_EXAMPLES, LOCATION_EXAMPLES } from '#lib/listings/examples';
 import { loadWallet } from '#lib/server/functions/invoke';
+import {
+	addAvailability,
+	addLocation,
+	removeAvailability,
+	removeLocation
+} from '#lib/server/meetup-setup';
 import type { Actions, PageServerLoad } from './$types';
 
 /**
@@ -47,9 +53,12 @@ export const load: PageServerLoad = async ({ locals, url }) => {
 			.order('created_at', { ascending: true }),
 		locals.supabase
 			.from('availability_rules')
-			.select('id, day_of_week, start_time, end_time, timezone')
+			.select('id, day_of_week, start_time, end_time, timezone, specific_date')
 			.eq('profile_id', user.id)
 			.eq('is_archived', false)
+			/** Dated times that have passed are no longer worth showing. */
+			.or(`specific_date.is.null,specific_date.gte.${new Date().toISOString().slice(0, 10)}`)
+			.order('specific_date', { ascending: true, nullsFirst: true })
 			.order('day_of_week', { ascending: true })
 	]);
 
@@ -89,36 +98,7 @@ export const actions: Actions = {
 
 	addLocation: async ({ request, locals, url }) => {
 		const user = requireUser(await locals.getVerifiedUser(), url.pathname);
-
-		const form = await request.formData();
-		const name = String(form.get('name') ?? '').trim();
-		const latitude = Number(form.get('latitude'));
-		const longitude = Number(form.get('longitude'));
-
-		if (name.length === 0) {
-			return fail(400, problem('Give the place a name a stranger would recognise.'));
-		}
-
-		/**
-		 * Range-checked here as well as by the database constraint. A transposed
-		 * pair — latitude 123, longitude 49 — is a plausible typo that would
-		 * otherwise surface as an opaque constraint violation.
-		 */
-		if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
-			return fail(400, problem('Latitude must be between -90 and 90.'));
-		}
-
-		if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) {
-			return fail(400, problem('Longitude must be between -180 and 180.'));
-		}
-
-		const { error } = await locals.supabase
-			.from('meetup_locations')
-			.insert({ profile_id: user.id, name, latitude, longitude });
-
-		if (error) return fail(500, problem('That location could not be saved.'));
-
-		return done('Meetup location added.');
+		return addLocation(locals, user.id, await request.formData());
 	},
 
 	/**
@@ -154,59 +134,12 @@ export const actions: Actions = {
 
 	removeLocation: async ({ request, locals, url }) => {
 		const user = requireUser(await locals.getVerifiedUser(), url.pathname);
-		const form = await request.formData();
-
-		/**
-		 * Archived, not deleted. A past commitment points at where it was meant
-		 * to happen, and deleting the row would either break that reference or
-		 * erase the record of where someone agreed to meet.
-		 */
-		const { error } = await locals.supabase
-			.from('meetup_locations')
-			.update({ is_archived: true })
-			.eq('id', String(form.get('locationId') ?? ''))
-			.eq('profile_id', user.id);
-
-		if (error) return fail(500, problem('That location could not be removed.'));
-
-		return done('Location removed.');
+		return removeLocation(locals, user.id, await request.formData());
 	},
 
 	addAvailability: async ({ request, locals, url }) => {
 		const user = requireUser(await locals.getVerifiedUser(), url.pathname);
-
-		const form = await request.formData();
-		const dayOfWeek = Number(form.get('dayOfWeek'));
-		const startTime = String(form.get('startTime') ?? '');
-		const endTime = String(form.get('endTime') ?? '');
-
-		if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) {
-			return fail(400, problem('Choose a day of the week.'));
-		}
-
-		if (startTime === '' || endTime === '') {
-			return fail(400, problem('Set both a start and an end time.'));
-		}
-
-		/**
-		 * String comparison is correct for `HH:MM` and avoids parsing into dates
-		 * only to throw them away. It is also what the database constraint
-		 * checks, so the two cannot disagree.
-		 */
-		if (endTime <= startTime) {
-			return fail(400, problem('The end time has to be after the start time.'));
-		}
-
-		const { error } = await locals.supabase.from('availability_rules').insert({
-			profile_id: user.id,
-			day_of_week: dayOfWeek,
-			start_time: startTime,
-			end_time: endTime
-		});
-
-		if (error) return fail(500, problem('That availability could not be saved.'));
-
-		return done('Availability added.');
+		return addAvailability(locals, user.id, await request.formData());
 	},
 
 	addExampleAvailability: async ({ locals, url }) => {
@@ -247,16 +180,6 @@ export const actions: Actions = {
 
 	removeAvailability: async ({ request, locals, url }) => {
 		const user = requireUser(await locals.getVerifiedUser(), url.pathname);
-		const form = await request.formData();
-
-		const { error } = await locals.supabase
-			.from('availability_rules')
-			.update({ is_archived: true })
-			.eq('id', String(form.get('availabilityId') ?? ''))
-			.eq('profile_id', user.id);
-
-		if (error) return fail(500, problem('That availability could not be removed.'));
-
-		return done('Availability removed.');
+		return removeAvailability(locals, user.id, await request.formData());
 	}
 };
